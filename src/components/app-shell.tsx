@@ -17,8 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-5xl flex-col md:flex-row">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface px-4 py-8 md:flex">
-        <p className="font-display text-2xl font-medium tracking-tight text-ink">MyDesk</p>
-        <p className="mt-1 text-sm text-muted">เลขาการเงินส่วนตัว</p>
+        <img src="/secretary-logo.png" alt="คุณเลขา" className="h-12 w-auto object-contain" />
         <nav className="mt-10 flex flex-col gap-1">
           {NAV.map((item) => {
             const active = pathname === item.to;
@@ -42,10 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-h-dvh flex-1 flex-col pb-20 md:pb-0">
         <header className="flex items-center justify-between px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] md:hidden">
-          <div>
-            <p className="font-display text-xl font-medium tracking-tight">MyDesk</p>
-            <p className="text-xs text-muted">เลขาการเงินส่วนตัว</p>
-          </div>
+          <img src="/secretary-logo.png" alt="คุณเลขา" className="h-10 w-auto object-contain" />
         </header>
         <main className="flex-1 px-4 py-4 md:px-8 md:py-8">{children}</main>
       </div>

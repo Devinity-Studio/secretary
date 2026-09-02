@@ -4,7 +4,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AuthProvider } from "@/lib/auth/provider";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "MyDesk";
+const APP_NAME = "คุณเลขา";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "เลขาการเงินส่วนตัว — บันทึกรายรับรายจ่ายด้วยคำสั้น ๆ",
+        content: "คุณเลขา — บันทึกรายรับรายจ่ายด้วยคำสั้น ๆ",
       },
       { name: "theme-color", content: "#F3EEE6" },
     ],

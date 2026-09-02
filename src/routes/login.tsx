@@ -30,8 +30,8 @@ function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="font-display text-3xl font-medium tracking-tight">MyDesk</h1>
-          <p className="mt-2 text-sm text-muted">เลขาการเงินส่วนตัว</p>
+          <img src="/secretary-logo.png" alt="คุณเลขา" className="mx-auto h-16 w-auto object-contain" />
+          <p className="mt-2 text-sm text-muted">เลขานุการการเงินส่วนตัว</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-6 space-y-4">
