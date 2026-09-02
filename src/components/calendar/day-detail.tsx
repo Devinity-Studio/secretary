@@ -1,10 +1,11 @@
 import { CalendarDays, Pencil, Plus, Target, Trash2 } from "lucide-react";
+import { useMemo } from "react";
 import { useCalendarStore } from "@/lib/calendar/store";
 import { EVENT_TYPE_LABEL, LEAVE_TYPE_LABEL } from "@/lib/calendar/types";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { useGoalStore } from "@/lib/goals/store";
+import { todayISO } from "@/lib/utils";
 import { formatThaiDate } from "@/lib/finance/period";
-import { cn, formatBaht } from "@/lib/utils";
 
 export function DayDetail({
   date,
@@ -17,12 +18,20 @@ export function DayDetail({
   onEditEvent: (e: CalendarEvent) => void;
   onAddContribution: (goalId: string) => void;
 }) {
-  const events = useCalendarStore((s) => s.eventsForDate(date));
+  const allEvents = useCalendarStore((s) => s.events);
   const deleteEvent = useCalendarStore((s) => s.deleteEvent);
-  const goals = useGoalStore((s) => s.goalsForDate(date));
-  const contributions = useGoalStore((s) => s.contributions);
+  const allGoals = useGoalStore((s) => s.goals);
+  const allContributions = useGoalStore((s) => s.contributions);
 
-  const dayContributions = contributions.filter((c) => c.date === date);
+  const events = useMemo(() => allEvents.filter((e) => e.date === date), [allEvents, date]);
+  const goals = useMemo(() => {
+    const today = todayISO();
+    return allGoals.filter((g) => {
+      const isActive = g.status === "active" || (g.status !== "completed" && g.status !== "cancelled" && today <= g.endDate);
+      return isActive && date >= g.startDate && date <= g.endDate;
+    });
+  }, [allGoals, date]);
+  const dayContributions = useMemo(() => allContributions.filter((c) => c.date === date), [allContributions, date]);
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-4">

@@ -6,10 +6,15 @@ import { createBrowserClient } from "@supabase/ssr";
  * Env vars are exposed via VITE_ prefix so they reach the browser.
  */
 export function createClient() {
-  return createBrowserClient(
-    import.meta.env.VITE_SUPABASE_URL!,
-    import.meta.env.VITE_SUPABASE_ANON_KEY!,
-  );
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars. " +
+      "Make sure .grok/app-env.json has these keys with VITE_ prefix.",
+    );
+  }
+  return createBrowserClient(url, key);
 }
 
 /** Singleton for browser usage. */
@@ -17,7 +22,8 @@ let client: ReturnType<typeof createClient> | null = null;
 
 export function getSupabase() {
   if (typeof window === "undefined") {
-    // Server-side: create fresh each time (no shared state)
+    // Server-side during SSR: return a throwaway client (auth pages won't SSR)
+    // or null — the real client mounts in the browser.
     return createClient();
   }
   client ??= createClient();
