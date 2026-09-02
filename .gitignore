@@ -1,0 +1,26 @@
+node_modules/
+.project_id
+.github_repo
+.env
+.env.*
+
+# Build output
+dist/
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+
+# Debug
+npm-debug.log*
+tmp/
+
+# Supabase
+.supabase/
+
+# Backup copy
+secretary-main/

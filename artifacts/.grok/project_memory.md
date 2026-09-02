@@ -1,0 +1,1 @@
+- MyDesk: Phase 1 = personal + family/circle/org use (me, partner, kids, siblings, friends, company) including shared accounts/goals/invites. Phase 2 = public product later. Docs 00-10 done. Next: Expo Foundation. Resume: docs/00-progress-and-workplan.md [2026-09-02]
