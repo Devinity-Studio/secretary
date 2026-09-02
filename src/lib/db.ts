@@ -129,6 +129,23 @@ async function createPgliteSql(): Promise<Sql> {
   });
   const pg = await globalRef.__pgliteInstance__;
 
+  // Create a minimal auth schema stub so migrations referencing auth.users(id)
+  // and auth.uid() succeed on bare PGLite (which has no Supabase auth schema).
+  await pg.exec(`
+    create schema if not exists auth;
+    create table if not exists auth.users (
+      id uuid primary key default gen_random_uuid(),
+      email text,
+      raw_user_meta_data jsonb default '{}'::jsonb
+    );
+    create or replace function auth.uid() returns uuid
+    language sql stable
+    as $$ select '00000000-0000-0000-0000-000000000000'::uuid $$;
+    insert into auth.users (id, email) values
+      ('00000000-0000-0000-0000-000000000000', 'dev@preview.local')
+    on conflict (id) do nothing;
+  `);
+
   // Apply migrations/ (the single schema source) so preview matches production.
   // SQL is inlined by the bundler via import.meta.glob (no runtime fs); applied
   // files are tracked in _migrations. The glob does not descend, so the opt-in

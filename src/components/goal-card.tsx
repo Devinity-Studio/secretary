@@ -1,5 +1,6 @@
 import { Check, MoreHorizontal, Pencil, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { GOAL_TYPE_LABEL, goalStatusText, useGoalStore } from "@/lib/goals/store";
 import type { Goal } from "@/lib/goals/types";
 import { cn, formatBaht } from "@/lib/utils";
@@ -13,7 +14,9 @@ export function GoalCard({
   onEdit: (g: Goal) => void;
   onContribute: (g: Goal) => void;
 }) {
-  const { current, percent, daysElapsed, daysTotal, daysLeft } = useGoalStore((s) => s.goalProgress(goal.id));
+  const { current, percent, daysElapsed, daysTotal, daysLeft } = useGoalStore(
+    useShallow((s) => s.goalProgress(goal.id)),
+  );
   const completeGoal = useGoalStore((s) => s.completeGoal);
   const deleteGoal = useGoalStore((s) => s.deleteGoal);
   const [menuOpen, setMenuOpen] = useState(false);
