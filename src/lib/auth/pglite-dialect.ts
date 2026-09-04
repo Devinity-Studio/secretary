@@ -66,7 +66,9 @@ class LazyPGliteDriver implements Driver {
       this.connection = undefined;
       return;
     }
-    next(this.connection);
+    const conn = this.connection!;
+    this.connection = undefined;
+    next(conn);
   }
 
   async beginTransaction(

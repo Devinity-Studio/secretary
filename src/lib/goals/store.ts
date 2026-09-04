@@ -2,6 +2,12 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { createId, todayISO } from "@/lib/utils";
 import type { Contribution, Goal, GoalStatus, GoalType } from "./types";
+import {
+  pushGoal as syncPushGoal,
+  deleteGoal as syncDeleteGoal,
+  pushContribution as syncPushContribution,
+  deleteContribution as syncDeleteContribution,
+} from "@/lib/supabase/sync";
 
 function computeStatus(goal: Goal, now: string): GoalStatus {
   if (goal.status === "completed" || goal.status === "cancelled") return goal.status;
@@ -12,6 +18,9 @@ function computeStatus(goal: Goal, now: string): GoalStatus {
 interface GoalState {
   goals: Goal[];
   contributions: Contribution[];
+
+  /** Replace all data from Supabase pull (hydrates on login). */
+  replaceAll: (goals: Goal[], contributions: Contribution[]) => void;
 
   addGoal: (input: {
     title: string;
@@ -51,6 +60,10 @@ export const useGoalStore = create<GoalState>()(
       goals: [],
       contributions: [],
 
+      replaceAll: (goals, contributions) => {
+        set({ goals, contributions });
+      },
+
       addGoal: (input) => {
         const now = new Date().toISOString();
         const goal: Goal = {
@@ -67,15 +80,17 @@ export const useGoalStore = create<GoalState>()(
           updatedAt: now,
         };
         set({ goals: [...get().goals, goal] });
+        syncPushGoal(goal).catch(() => {});
         return goal;
       },
 
       updateGoal: (id, patch) => {
-        set({
-          goals: get().goals.map((g) =>
-            g.id === id ? { ...g, ...patch, updatedAt: new Date().toISOString() } : g,
-          ),
-        });
+        const updated = get().goals.map((g) =>
+          g.id === id ? { ...g, ...patch, updatedAt: new Date().toISOString() } : g,
+        );
+        set({ goals: updated });
+        const row = updated.find((g) => g.id === id);
+        if (row) syncPushGoal(row).catch(() => {});
       },
 
       deleteGoal: (id) => {
@@ -83,14 +98,16 @@ export const useGoalStore = create<GoalState>()(
           goals: get().goals.filter((g) => g.id !== id),
           contributions: get().contributions.filter((c) => c.goalId !== id),
         });
+        syncDeleteGoal(id).catch(() => {});
       },
 
       completeGoal: (id) => {
-        set({
-          goals: get().goals.map((g) =>
-            g.id === id ? { ...g, status: "completed" as GoalStatus, updatedAt: new Date().toISOString() } : g,
-          ),
-        });
+        const updated = get().goals.map((g) =>
+          g.id === id ? { ...g, status: "completed" as GoalStatus, updatedAt: new Date().toISOString() } : g,
+        );
+        set({ goals: updated });
+        const row = updated.find((g) => g.id === id);
+        if (row) syncPushGoal(row).catch(() => {});
       },
 
       addContribution: (input) => {
@@ -104,21 +121,24 @@ export const useGoalStore = create<GoalState>()(
           createdAt: now,
         };
         set({ contributions: [...get().contributions, c] });
+        syncPushContribution(c).catch(() => {});
         return c;
       },
 
       updateContribution: (id, patch) => {
-        set({
-          contributions: get().contributions.map((c) =>
-            c.id === id ? { ...c, ...patch } : c,
-          ),
-        });
+        const updated = get().contributions.map((c) =>
+          c.id === id ? { ...c, ...patch } : c,
+        );
+        set({ contributions: updated });
+        const row = updated.find((c) => c.id === id);
+        if (row) syncPushContribution(row).catch(() => {});
       },
 
       deleteContribution: (id) => {
         set({
           contributions: get().contributions.filter((c) => c.id !== id),
         });
+        syncDeleteContribution(id).catch(() => {});
       },
 
       goalProgress: (goalId) => {

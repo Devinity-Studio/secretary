@@ -3,9 +3,16 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { createId } from "@/lib/utils";
 import type { CalendarEvent, EventType, LeaveType } from "./types";
 import { EVENT_COLORS } from "./types";
+import {
+  pushEvent as syncPushEvent,
+  deleteEvent as syncDeleteEvent,
+} from "@/lib/supabase/sync";
 
 interface CalendarState {
   events: CalendarEvent[];
+
+  /** Replace all data from Supabase pull (hydrates on login). */
+  replaceAll: (events: CalendarEvent[]) => void;
 
   addEvent: (input: {
     type: EventType;
@@ -32,6 +39,10 @@ export const useCalendarStore = create<CalendarState>()(
     (set, get) => ({
       events: [],
 
+      replaceAll: (events) => {
+        set({ events });
+      },
+
       addEvent: (input) => {
         const now = new Date().toISOString();
         const event: CalendarEvent = {
@@ -49,19 +60,22 @@ export const useCalendarStore = create<CalendarState>()(
           updatedAt: now,
         };
         set({ events: [...get().events, event] });
+        syncPushEvent(event).catch(() => {});
         return event;
       },
 
       updateEvent: (id, patch) => {
-        set({
-          events: get().events.map((e) =>
-            e.id === id ? { ...e, ...patch, updatedAt: new Date().toISOString() } : e,
-          ),
-        });
+        const updated = get().events.map((e) =>
+          e.id === id ? { ...e, ...patch, updatedAt: new Date().toISOString() } : e,
+        );
+        set({ events: updated });
+        const row = updated.find((e) => e.id === id);
+        if (row) syncPushEvent(row).catch(() => {});
       },
 
       deleteEvent: (id) => {
         set({ events: get().events.filter((e) => e.id !== id) });
+        syncDeleteEvent(id).catch(() => {});
       },
 
       eventsForDate: (date) => {

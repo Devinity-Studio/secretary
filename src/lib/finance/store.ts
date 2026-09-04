@@ -4,6 +4,11 @@ import { DEFAULT_ACCOUNTS } from "./categories";
 import { inRange, periodRange } from "./period";
 import type { Account, PeriodKey, Transaction, TransactionType } from "./types";
 import { createId } from "@/lib/utils";
+import {
+  pushAccount as syncPushAccount,
+  pushTransaction as syncPushTransaction,
+  deleteTransaction as syncDeleteTransaction,
+} from "@/lib/supabase/sync";
 
 function seedAccounts(): Account[] {
   const now = new Date().toISOString();
@@ -54,6 +59,10 @@ const memoryStorage: Storage = {
 interface FinanceState {
   accounts: Account[];
   transactions: Transaction[];
+
+  /** Replace all data from Supabase pull (hydrates on login). */
+  replaceAll: (accounts: Account[], transactions: Transaction[]) => void;
+
   addAccount: (input: { name: string; type: Account["type"] }) => void;
   addTransaction: (input: {
     type: TransactionType;
@@ -76,6 +85,10 @@ export const useFinanceStore = create<FinanceState>()(
       accounts: seedAccounts(),
       transactions: [],
 
+      replaceAll: (accounts, transactions) => {
+        set({ accounts, transactions });
+      },
+
       addAccount: ({ name, type }) => {
         const acc: Account = {
           id: createId(),
@@ -87,6 +100,7 @@ export const useFinanceStore = create<FinanceState>()(
           createdAt: new Date().toISOString(),
         };
         set({ accounts: [...get().accounts, acc] });
+        syncPushAccount(acc).catch(() => {});
       },
 
       defaultAccountId: (prefer) => {
@@ -114,6 +128,7 @@ export const useFinanceStore = create<FinanceState>()(
           transactions: [tx, ...get().transactions],
           accounts: applyTx(get().accounts, tx, 1),
         });
+        syncPushTransaction(tx).catch(() => {});
         return tx;
       },
 
@@ -132,6 +147,7 @@ export const useFinanceStore = create<FinanceState>()(
           accounts,
           transactions: get().transactions.map((t) => (t.id === id ? next : t)),
         });
+        syncPushTransaction(next).catch(() => {});
       },
 
       deleteTransaction: (id) => {
@@ -141,6 +157,7 @@ export const useFinanceStore = create<FinanceState>()(
           accounts: applyTx(get().accounts, prev, -1),
           transactions: get().transactions.filter((t) => t.id !== id),
         });
+        syncDeleteTransaction(id).catch(() => {});
       },
     }),
     {
