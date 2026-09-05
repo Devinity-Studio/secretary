@@ -1241,3 +1241,303 @@ Continuity
 และ
 
 > **Secretary คือสิ่งที่เชื่อมทั้งหมดเข้าด้วยกัน**
+
+---
+
+# Appendix A: Context Domain Model Specification
+
+> **Status:** ✅ IMPLEMENTED — `src/lib/context/types.ts`, `src/lib/context/store.ts`
+
+## A.1 Architecture Principle
+
+```
+Context is the DOMAIN MODEL.
+UI (Context Card, Statement, Evidence panel) are VIEWERS of Context, not the model itself.
+```
+
+```text
+                 ┌──────────────┐
+                 │   Sources   │
+                 │             │
+                 │ Voice       │
+                 │ Email       │
+                 │ Notification│
+                 │ Calendar     │
+                 │ User        │
+                 └──────┬───────┘
+                        ↓
+                ┌────────────────┐
+                │  Context     │
+                │  Canonical   │
+                └───────┬────────┘
+                        ↓
+              ┌─────────┴─────────┐
+              ↓                   ↓
+       Context Card           Statement
+              ↓                   ↓
+        Evidence/Detail      Evidence/Detail
+```
+
+## A.2 Key Constraints
+
+### 1. Context is Source of Truth
+- `statement` (if present) is **CACHED/DERIVED** for display, not canonical
+- Statement can be **regenerated from Facts** at any time
+- UI must NOT be a dependency of the domain model
+
+### 2. Evidence / Fact / Inference are Strictly Separated
+```
+Evidence (raw observation)
+    ↓ supports
+Fact (proven data point)
+    ↓ + Evidence
+Inference (AI assessment, traces back to Evidence/Facts)
+```
+
+### 3. Lifecycle Status is Separated from Change History
+- **Lifecycle**: `tentative` → `confirmed` → `completed` / `cancelled` (NO "changed")
+- **Change History**: separate event log for transitions and value changes
+
+### 4. Record First, Identify Later
+- Context can be created with **minimal data** (only Evidence required)
+- Enrichment happens through separate operations
+- No schema enforcement requiring all relations at creation
+
+### 5. Source ≠ Evidence
+- **Source** = channel/pathway (user, voice, email, notification, calendar, external, ai)
+- **Evidence** = specific proof items; multiple evidence can come from different sources
+
+### 6. Related Context supports Future Shared Context
+- Context ↔ Context relationships
+- Ready for future: Shared Context ↔ Participant / Secretary
+
+## A.3 Type Hierarchy
+
+### SourceType
+```typescript
+type SourceType = "user" | "voice" | "email" | "notification" | "calendar" | "external" | "ai"
+```
+
+### Evidence (Immutable Proof)
+```typescript
+interface Evidence {
+  id: string
+  sourceType: SourceType
+  sourceId: string | null      // e.g., email ID, notification ID, bank TXN ID
+  content: EvidenceContent      // { kind: "text" | "structured" | "hybrid" }
+  capturedAt: string            // ISO timestamp
+  confidence: ConfidenceLevel   // "high" | "medium" | "low" | "unknown"
+}
+```
+
+### Fact (Proven Data Point)
+```typescript
+interface Fact {
+  id: string
+  evidenceIds: string[]         // MUST trace back to Evidence (provenance)
+  field: string                // e.g., "amount", "date", "recipient"
+  value: unknown
+  establishedAt: string         // ISO timestamp
+}
+```
+
+### Inference (AI Assessment)
+```typescript
+interface Inference {
+  id: string
+  evidenceIds: string[]         // MUST trace back to Evidence
+  factIds: string[]            // MAY trace to Facts
+  field: string
+  value: unknown
+  confidence: ConfidenceLevel
+  reasoning: string             // MUST reference evidence/facts
+  inferredAt: string
+  confirmable: boolean
+  confirmed: boolean
+}
+```
+
+### LifecycleStatus
+```typescript
+type LifecycleStatus = "tentative" | "confirmed" | "cancelled" | "completed"
+
+const LIFECYCLE_TRANSITIONS = {
+  tentative: ["confirmed", "cancelled"],
+  confirmed: ["completed", "cancelled"],
+  cancelled: [],  // Terminal
+  completed: []   // Terminal
+}
+```
+
+### ChangeEvent (History)
+```typescript
+type ChangeEventType =
+  | "created"
+  | "field_updated"
+  | "status_transition"
+  | "evidence_added"
+  | "fact_added"
+  | "inference_added"
+  | "inference_confirmed"
+  | "inference_rejected"
+  | "link_added"
+  | "link_removed"
+  | "enriched"
+```
+
+### EntityLink (Optional Relations)
+```typescript
+type EntityType = "person" | "account" | "project" | "event" | "goal" | "document" | "conversation" | "context"
+
+interface EntityLink {
+  id: string
+  entityType: EntityType
+  entityId: string
+  label: string
+  relationship: string          // e.g., "sender", "recipient", "source"
+  source: "user" | "ai"
+  createdAt: string
+}
+```
+
+### RelatedContext (Context-to-Context)
+```typescript
+type ContextRelationType = "parent" | "child" | "related" | "derived" | "converges"
+
+interface RelatedContext {
+  id: string
+  relatedContextId: string
+  relationType: ContextRelationType
+  description: string
+  source: "user" | "ai" | "system"
+  createdAt: string
+}
+```
+
+### SecretaryContext (Canonical Model)
+```typescript
+interface SecretaryContext {
+  id: string
+  type: string                 // e.g., "financial.transaction", "calendar.event"
+
+  // Lifecycle
+  lifecycle: LifecycleStatus
+
+  // Evidence & Facts & Inferences
+  evidenceIds: string[]
+  facts: Fact[]
+  inferences: Inference[]
+
+  // Sources
+  primarySource: SourceType
+  sources: SourceType[]         // All contributing sources
+
+  // Relations
+  links: EntityLink[]           // Optional — can be added later
+  relatedContexts: RelatedContext[]
+
+  // History (append-only)
+  history: ChangeEvent[]
+
+  // Timestamps
+  createdAt: string
+  updatedAt: string
+  createdBy: "user" | "ai" | "system"
+
+  // Optional
+  expiresAt: string | null
+  priority: number             // 0-100
+  tags: string[]
+  archived: boolean
+
+  // Future S2S support
+  sharedWithUserIds: string[] | null
+  canonicalId: string | null
+}
+```
+
+## A.4 Context Creation Flow
+
+```text
+User: "เงินเข้า 15000"
+
+         ↓
+  CreateContext({
+    evidence: {
+      sourceType: "user",
+      content: { kind: "text", text: "เงินเข้า 15000" }
+    }
+  })
+         ↓
+  ┌────────────────────────────────────────┐
+  │ Context (tentative)                     │
+  │ - evidenceIds: ["ev-1"]               │
+  │ - facts: []                            │
+  │ - inferences: []                       │
+  │ - links: []                            │
+  └────────────────────────────────────────┘
+         ↓ (later enrichment)
+  addFact({ evidenceIds: ["ev-1"], field: "amount", value: 15000 })
+         ↓
+  ┌────────────────────────────────────────┐
+  │ Context (tentative)                     │
+  │ - facts: [{ field: "amount", value: 15000 }]
+  └────────────────────────────────────────┘
+         ↓ (more enrichment)
+  addLink({ entityType: "account", entityId: "kbank-001", ... })
+         ↓
+  ┌────────────────────────────────────────┐
+  │ Context (tentative)                     │
+  │ - facts: [...]                         │
+  │ - links: [{ entityType: "account", ... }]
+  └────────────────────────────────────────┘
+         ↓ (user confirms)
+  transitionLifecycle("confirmed")
+```
+
+## A.5 Multiple Sources → One Context
+
+```text
+Email: "นัดประชุม 10:00"
+   ↓
+Notification: "เปลี่ยนเป็น 11 โมง"
+   ↓
+Calendar: "Event at 11:00"
+   ↓
+         ↓ All converge to ONE Context
+┌────────────────────────────────────────┐
+│ Context (Meeting)                        │
+│ - evidenceIds: [email-ev, notif-ev, cal-ev]
+│ - sources: ["email", "notification", "calendar"]
+│ - facts: [{ field: "time", value: "11:00" }]
+└────────────────────────────────────────┘
+```
+
+## A.6 Definition of Done (Step 1.1)
+
+| # | Criteria | Status |
+|---|----------|--------|
+| 1 | Context Model is domain-first | ✅ |
+| 2 | UI is not a dependency of the model | ✅ |
+| 3 | Fact/Inference/Evidence separated | ✅ |
+| 4 | Provenance traceable | ✅ |
+| 5 | Lifecycle vs Change History separated | ✅ |
+| 6 | Record First, Identify Later works | ✅ |
+| 7 | Multiple Sources converge to one Context | ✅ |
+| 8 | Related Context supports future S2S | ✅ |
+| 9 | Domain behavior tests pass | ⏳ |
+| 10 | Documentation is source of truth | ✅ (this doc) |
+
+## A.7 Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/context/types.ts` | Canonical type definitions |
+| `src/lib/context/store.ts` | Zustand store for Context state |
+| `src/lib/context/context.test.ts` | Domain behavior tests |
+
+## A.8 Next Steps (Step 1.2+)
+
+- **Step 1.2**: ContextCard Primitive — UI component that VIEWs Context
+- **Step 1.3**: Statement View — derived from Facts
+- **Step 2.1**: Workspace Layout — Context appears in Workspace
