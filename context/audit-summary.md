@@ -8,8 +8,8 @@
 
 | ผลลัพย์ | จำนวนรายการ |
 |---------|--------------|
-| ✅ ผ่าน | 7 |
-| 🟡 ต้องปรับ | 2 |
+| ✅ ผ่าน | 8 |
+| 🟡 ต้องปรับ | 1 |
 | 🔴 ขาด | 0 |
 | ⚠️ มี architectural risk | 0 |
 
@@ -47,8 +47,6 @@
 - **เหตุผล:** Evidence immutably stored; Fact trace ไป `evidenceIds`; Inference trace ไป `evidenceIds/factIds` — ไม่สับสนกับ parsed-capture confidence เดิม
 - **อ้างอิง:** AUDIT-GAP-ANALYSIS.md §2.1 Evidence System (เดิม 🟡)
 
-
-
 ---
 
 ## 🟡 ต้องปรับ
@@ -59,15 +57,7 @@
 - **หมายเหตุ:** ยังไม่ผสานกับ capture flow จริง — ยังเป็น manual flag / helper ที่ใช้ได้เมื่อต้องการ; ยังไม่มีกรณีทดสอบสำหรับ boundary logic ใหม่ (จัดอยู่ใน 🟡 9.1)
 - **สถานะ:** 🟡 ต้องปรับ — เส้นแบ่งมีแล้ว แต่การใช้งานเชิงปฏิบัติยังไม่ผสานกับ capture flow จริง — ให้ทำ step 2 ต่อ
 
-### 9.2 policy helper ใน store
-- **เหตุผล:** เพิ่ม `markPatternOnly` / `isPatternOnly` / `clearPatternOnly` ใน store เพื่อทำเครื่องหมาย context ที่เป็น pattern-only
-- **อ้างอิง:** context/next-steps/spec-capture-to-context.md §1
-- **หมายเหตุ:** ยังไม่มี cases ทดสอบสำหรับ helper เหล่านี้ใน audit test suite — จัดอยู่ใน 🟡 9.2
 
-### 9.2 policy helper ใน store
-- **เหตุผล:** เพิ่ม `markPatternOnly` / `isPatternOnly` / `clearPatternOnly` ใน store เพื่อทำเครื่องหมาย context ที่เป็น pattern-only
-- **อ้างอิง:** context/next-steps/spec-capture-to-context.md §1
-- **หมายเหตุ:** ยังไม่มี cases ทดสอบสำหรับ helper เหล่านี้ใน audit test suite — จัดอยู่ใน 🟡 9.2
 
 ### 2.4 Glue code เชื่อม CaptureBar → addContext ยังไม่เขียน
 - **เหตุผล:** ไฟล์ context/store สามารถสร้าง context จาก evidence ได้แล้ว แต่ยังไม่มีการเรียกใช้จริงจาก capture-bar

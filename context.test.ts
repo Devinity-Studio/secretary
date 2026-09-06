@@ -361,7 +361,7 @@ describe("Context Integrity Audit — สรุปผล", () => {
     // audit summary ปัจจุบันระบุผลลัพธ์เป็น: 8 ผ่าน, 2 advisory, 0 missing, 0 risk
     // ระบุ expectation ตรงนี้เพื่อป้องกันการ drift ระหว่าง test suite กับ summary file
     const expectedCounts = {
-      pass: 7,
+      pass: 8,
       advisory: 2,
       missing: 0,
       risk: 0,
