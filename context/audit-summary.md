@@ -61,13 +61,15 @@
 
 ### 9.1 judgment gate ยังไม่ชัดเจนใน store
 - **เหตุผล:** มีช่องทางเก็บ source type / confidence / tag — แต่ยังไม่มี “gate” ที่ชัดเจนใน store ว่าเมื่อไหร่ควรบันทึกเป็น pattern vs เมื่อไหร่ตัดสิน
-- **สิ่งที่ควรทำ:** เพิ่ม policy helper หรือ flag บน store ว่า store ยอมรับ pattern-only record โดยไม่มี inference อย่างเดียว
+- **สิ่งที่ควรทำ:** เพิ่ม policy helper หรือ flag บน store ว่า store ยอมรับ pattern-only record โดยไม่มี inference อย่างเดียว — ดูแผนใน `context/next-steps/spec-capture-to-context.md` §1
 - **อ้างอิง:** SECRETARY-ARCHITECTURE.md §9 “สิ่งที่ Memory ควรเก็บคือ Observed Pattern ไม่ใช่การตีตราบุคลิก”
+- **สถานะ:** 🟡 ต้องปรับ — ให้ทำ step 1 เสียก่อน ไม่ต้องสร้าง Judgment Engine ใหญ่
 
 ### 2.4 Glue code เชื่อม CaptureBar → addContext ยังไม่เขียน
 - **เหตุผล:** ไฟล์ context/store สามารถสร้าง context จาก evidence ได้แล้ว แต่ยังไม่มีการเรียกใช้จริงจาก capture-bar
-- **สิ่งที่ควรทำ:** เพิ่ม integration point ใน capture flow ที่ไปเรียก `createContext` + `addEvidence/AddFact`
+- **สิ่งที่ควรทำ:** เพิ่ม integration point ใน capture flow ที่ไปเรียก `createContext` + `addEvidence/AddFact` — ดูแผนใน `context/next-steps/spec-capture-to-context.md` §2 + flow ใน `context/next-steps/capture-to-context-flow.md`
 - **อ้างอิง:** AUDIT-GAP-ANALYSIS.md §2.4 “Capture Bar — Quick capture with NLP parsing (เดิม ✅)”; §2.1 “Record First, Identify Later”
+- **สถานะ:** 🟡 ต้องปรับ — ให้ทำ step 2 เสียก่อน เป็น vertical slice จริง
 
 ---
 
