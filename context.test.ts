@@ -103,7 +103,7 @@ describe("SECRETARY-ARCHITECTURE.md — expected contract", () => {
     store.markPatternOnly(ctx.id);
     const isPattern = store.isPatternOnly(ctx.id);
     note(
-      "9.1 แยก source channel / confidence ออกจาก judgement — ใช้ policy helper",
+      "9.1 judgment boundary ใน store — ใช้ policy helper",
       "advisory",
       "type มี ai และ confidenceLevel มี unknown — พร้อมเก็บ pattern โดยไม่ตีตรา; ตอนนี้มี policy helper markPatternOnly / isPatternOnly แล้ว แต่ยังไม่ผสานกับ capture flow จริง",
     );
