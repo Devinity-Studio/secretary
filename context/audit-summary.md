@@ -9,7 +9,7 @@
 | ผลลัพย์ | จำนวนรายการ |
 |---------|--------------|
 | ✅ ผ่าน | 7 |
-| 🟡 ต้องปรับ | 1 |
+| 🟡 ต้องปรับ | 2 |
 | 🔴 ขาด | 0 |
 | ⚠️ มี architectural risk | 0 |
 
@@ -49,15 +49,17 @@
 
 ---
 
-## 🟡 ต้องปรับ
-
-### 9.1 judgment boundary ใน store
+## 🟡 ต้องปรับ### 9.1 judgment boundary ใน store
 - **เหตุผล:** มีการเพิ่ม `RecordIntent` + `RecordBoundary` types, helper `isPatternRecord`/`isJudgmentRecord`, และ policy helpers `markPatternOnly`/`isPatternOnly`/`clearPatternOnly` ใน store — เห็นเส้นแบ่งระหว่าง pattern-only record กับ judgment แล้ว
 - **อ้างอิง:** SECRETARY-ARCHITECTURE.md §9 “Observed Behavior ≠ Judgement”
 - **หมายเหตุ:** ยังไม่ผสานกับ capture flow จริง — ยังเป็น manual flag / helper ที่ใช้ได้เมื่อต้องการ; ยังไม่มีกรณีทดสอบสำหรับ boundary logic ใหม่ (จัดอยู่ใน 🟡 9.1)
 - **สถานะ:** 🟡 ต้องปรับ — เส้นแบ่งมีแล้ว แต่การใช้งานเชิงปฏิบัติยังไม่ผสานกับ capture flow จริง — ให้ทำ step 2 ต่อ
 
-
+### 9.2 test coverage สำหรับ policy helper ยังไม่เพิ่มใน audit suite
+- **เหตุผล:** policy helpers `markPatternOnly`/`isPatternOnly`/`clearPatternOnly` ถูกเพิ่มใน store แต่ยังไม่มี test case ใน audit suite นี้ cover
+- **สิ่งที่ควรทำ:** เพิ่ม cases ทดสอบสำหรับ helper เหล่านี้ใน `context.test.ts`
+- **อ้างอิง:** context/next-steps/spec-capture-to-context.md §1
+- **หมายเหตุ:** จัดอยู่ใน 🟡 9.2
 
 ### 2.4 Glue code เชื่อม CaptureBar → addContext ยังไม่เขียน
 - **เหตุผล:** ไฟล์ context/store สามารถสร้าง context จาก evidence ได้แล้ว แต่ยังไม่มีการเรียกใช้จริงจาก capture-bar

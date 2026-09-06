@@ -55,9 +55,10 @@ const memoryStorage: Storage = {
 // STATE INTERFACE
 // ════════════════════════════════════════════════════════════════════════════════
 
-interface ContextState {
-  /** เซตของ context ID ที่มี pattern-only record (ไม่ใช่ judgment) */
-  patternOnlyContextIds: Set<string>;
+interface ContextState {      /** เซตของ context ID ที่มี pattern-only record (ไม่ใช่ judgment) */
+      patternOnlyContextIds: Set<string>;
+      
+      
 
   /** All contexts — keyed by ID */
   contexts: Record<string, SecretaryContext>;
@@ -852,18 +853,20 @@ export const useContextStore = create<ContextState>()(
       // ── Judgment Boundary ──────────────────────────────────────────────────
 
       markPatternOnly: (contextId) => {
-        set((s) => ({
-          patternOnlyContextIds: new Set([...s.patternOnlyContextIds, contextId]),
-        }));
+        set((s) => {
+          const next = new Set<string>(Array.from(s.patternOnlyContextIds ?? []));
+          next.add(contextId);
+          return { patternOnlyContextIds: next };
+        });
       },
 
       isPatternOnly: (contextId) => {
-        return get().patternOnlyContextIds.has(contextId);
+        return Array.from(get().patternOnlyContextIds ?? []).includes(contextId);
       },
 
       clearPatternOnly: (contextId) => {
         set((s) => {
-          const next = new Set(s.patternOnlyContextIds);
+          const next = new Set<string>(Array.from(s.patternOnlyContextIds ?? []));
           next.delete(contextId);
           return { patternOnlyContextIds: next };
         });
@@ -886,7 +889,7 @@ export const useContextStore = create<ContextState>()(
         set({
           contexts: contextMap,
           evidence: evidenceMap,
-          patternOnlyContextIds: new Set(),
+          patternOnlyContextIds: new Set<string>(),
         });
       },
     }),
