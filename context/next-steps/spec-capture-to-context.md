@@ -39,18 +39,20 @@ User Input → Evidence → Context → Store → UI
 ### สิ่งที่ควรทำ (เล็ก)
 
 1. **เพิ่มประเภท record ที่ชัดเจนใน model หรือ helper**
-   - ตัวอย่างเช่น: `Observation` หรือ `PatternRecord` ที่ไม่ใช่ Fact, ไม่ใช่ Inference
-   - หรือเพิ่ม flag บน Evidence ว่า “นี่คือ observation อย่างเดียว ไม่ใช่ fact yet”
+   - เพิ่ม `RecordIntent` + `RecordBoundary` ใน `src/lib/context/types.ts`
+   - เพิ่ม helper `isPatternRecord` / `isJudgmentRecord`
    - ลักษณะสำคัญ: **บันทึกได้โดยไม่ต้องผ่านการประเมินค่า**
 
 2. **เพิ่ม policy helper ใน store**
-   - เช่น `isJudgmentBoundaryCrossed(ctx): boolean`
-   - หรือ `canRecordPattern(ctx): boolean`
-   - หรือ `separatePatternFromInference(ctx): ...`
+   - ใน `src/lib/context/store.ts` เพิ่ม:
+     - `markPatternOnly(contextId)`
+     - `isPatternOnly(contextId): boolean`
+     - `clearPatternOnly(contextId)`
    - จุดประสงค์: **ให้คนที่อ่าน store บอกได้ว่า record นี้เป็น pattern หรือ judgement**
 
 3. **อัปเดต audit สรุปว่าช่องว่างนี้ปิดแล้ว**
    - แก้ `context/audit-summary.md` ในส่วน 🟡 9.1 เป็น ✅/🟡 ที่ชัดเจนขึ้นหลังทำ step นี้
+   - สร้างเช็กลิสต์ใน `context/next-steps/judgment-boundary-checklist.md`
 
 ### สิ่งที่ห้ามทำใน step นี้
 

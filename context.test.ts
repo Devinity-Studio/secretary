@@ -88,7 +88,8 @@ describe("SECRETARY-ARCHITECTURE.md — expected contract", () => {
   // (ตรวจสอบ Architecture มีการเตรียมช่องทางเก็บ pattern โดยไม่ judgment)
 
   test("#9 Context มีช่องทางบันทึก pattern / source โดยไม่ตัดสิน", () => {
-    const ctx = useContextStore.getState().createContext({
+    const store = useContextStore.getState();
+    const ctx = store.createContext({
       evidence: {
         sourceType: "ai" as SourceType,
         sourceId: null,
@@ -98,12 +99,16 @@ describe("SECRETARY-ARCHITECTURE.md — expected contract", () => {
       },
       tags: ["observed-pattern"],
     });
+    // ใช้ policy helpers ใหม่เพื่อบันทึกว่านี่คือ pattern-only
+    store.markPatternOnly(ctx.id);
+    const isPattern = store.isPatternOnly(ctx.id);
     note(
-      "9.1 แยก source channel / confidence ออกจาก judgement",
+      "9.1 แยก source channel / confidence ออกจาก judgement — ใช้ policy helper",
       "advisory",
-      "type มี ai และ confidenceLevel มี unknown — พร้อมเก็บ pattern โดยไม่ตีตรา แต่ยังไม่มี explicit 'judgement' gate ใน store",
+      "type มี ai และ confidenceLevel มี unknown — พร้อมเก็บ pattern โดยไม่ตีตรา; ตอนนี้มี policy helper markPatternOnly / isPatternOnly แล้ว แต่ยังไม่ผสานกับ capture flow จริง",
     );
     expect(ctx.sources).toContain("ai");
+    expect(isPattern).toBe(true);
   });
 
   // ── 24. Finance Context ─────────────────────────────────────────────────────
@@ -350,6 +355,16 @@ describe("Context Integrity Audit — สรุปผล", () => {
         รายละเอียด: r.detail,
       })),
     );
+
+    // อัปเดตผลลัพธ์ให้ตรงกับ audit summary เวอร์ชันปัจจุบัน
+    // (ถ้ามีการเปลี่ยนแปลงคะแนน ให้แก้ไฟล์ context/audit-summary.md ด้วย)
+    const expectedCounts = {
+      pass: 8,
+      advisory: 2,
+      missing: 0,
+      risk: 0,
+    };
+    expect(counts).toEqual(expectedCounts);
 
     note(
       "สรุปโดยรวม — Context Integrity Audit",

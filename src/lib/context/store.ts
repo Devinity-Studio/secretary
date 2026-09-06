@@ -56,6 +56,9 @@ const memoryStorage: Storage = {
 // ════════════════════════════════════════════════════════════════════════════════
 
 interface ContextState {
+  /** เซตของ context ID ที่มี pattern-only record (ไม่ใช่ judgment) */
+  patternOnlyContextIds: Set<string>;
+
   /** All contexts — keyed by ID */
   contexts: Record<string, SecretaryContext>;
 
@@ -173,6 +176,15 @@ interface ContextState {
 
   /** Replace all data (for Supabase sync) */
   replaceAll: (contexts: SecretaryContext[], evidence: Evidence[]) => void;
+
+  /** บันทึก context ID ว่าเป็น pattern-only (ไม่มี judgment) */
+  markPatternOnly: (contextId: string) => void;
+
+  /** ตรวจสอบว่า context ID เป็น pattern-only หรือไม่ */
+  isPatternOnly: (contextId: string) => boolean;
+
+  /** ล้าง pattern-only context ID ออก */
+  clearPatternOnly: (contextId: string) => void;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -837,6 +849,26 @@ export const useContextStore = create<ContextState>()(
           (c) => !c.archived && c.lifecycle === "tentative",
         ),
 
+      // ── Judgment Boundary ──────────────────────────────────────────────────
+
+      markPatternOnly: (contextId) => {
+        set((s) => ({
+          patternOnlyContextIds: new Set([...s.patternOnlyContextIds, contextId]),
+        }));
+      },
+
+      isPatternOnly: (contextId) => {
+        return get().patternOnlyContextIds.has(contextId);
+      },
+
+      clearPatternOnly: (contextId) => {
+        set((s) => {
+          const next = new Set(s.patternOnlyContextIds);
+          next.delete(contextId);
+          return { patternOnlyContextIds: next };
+        });
+      },
+
       // ── Hydration ──────────────────────────────────────────────────────────
 
       replaceAll: (contexts, evidence) => {
@@ -854,6 +886,7 @@ export const useContextStore = create<ContextState>()(
         set({
           contexts: contextMap,
           evidence: evidenceMap,
+          patternOnlyContextIds: new Set(),
         });
       },
     }),

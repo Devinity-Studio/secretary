@@ -426,6 +426,9 @@ export interface RelatedContext {
  * 6. Change History tracks WHAT CHANGED, separately from lifecycle
  * 7. Entity Links are OPTIONAL at creation — supports Record First
  * 8. Related Contexts support future Shared Context / S2S
+ * 9. Record Intent separates pattern-only observation from judgment
+ *    - pattern: บันทึกสิ่งที่สังเกตได้เท่านั้น ไม่ตัดสิน
+ *    - judgment: การประเมินค่า / ตัดสิน — มี confidence + reasoning
  *
  * UI Responsibility:
  * - UI generates Statement from Facts (cached if needed for perf)
@@ -621,6 +624,34 @@ export interface AddRelatedContextInput {
   description: string;
   source?: "user" | "ai" | "system";
 }
+
+// ════════════════════════════════════════════════════════════════════════════════
+// RECORD TYPE — เส้นแบ่งระหว่าง Pattern-Only Record กับ Judgment
+// ════════════════════════════════════════════════════════════════════════════════
+
+export type RecordIntent =
+  | { kind: "pattern"; description: string }
+  | { kind: "judgment"; description: string; confidence: ConfidenceLevel; reasoning: string };
+
+export interface RecordBoundary {
+  /** Intent ที่ชี้ว่า record นี้เป็น pattern-only หรือ judgment */
+  intent: RecordIntent;
+  /** เมื่อไหร่ที่สร้าง (ISO timestamp) */
+  created_at: string;
+}
+
+export function isPatternRecord(boundary: RecordBoundary): boolean {
+  return boundary.intent.kind === "pattern";
+}
+
+export function isJudgmentRecord(boundary: RecordBoundary): boolean {
+  return boundary.intent.kind === "judgment";
+}
+
+export const RECORD_BOUNDARY_LABELS: Record<RecordIntent["kind"], string> = {
+  pattern: "บันทึกสิ่งที่สังเกตได้เท่านั้น",
+  judgment: "การประเมินค่า / ตัดสิน",
+};
 
 // ════════════════════════════════════════════════════════════════════════════════
 // DOMAIN TYPES — Predefined Context types for common domains
