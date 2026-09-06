@@ -8,7 +8,7 @@
 
 | ผลลัพย์ | จำนวนรายการ |
 |---------|--------------|
-| ✅ ผ่าน | 8 |
+| ✅ ผ่าน | 7 |
 | 🟡 ต้องปรับ | 2 |
 | 🔴 ขาด | 0 |
 | ⚠️ มี architectural risk | 0 |
@@ -26,11 +26,6 @@
 ### 6.1 สร้างได้ทันทีด้วย evidence = Record First
 - **เหตุผล:** `CreateContextInput` ไม่บังคับ type / source / lifecycle; `createContext()` สร้างได้ด้วย evidence อย่างเดียว
 - **อ้างอิง:** SECRETARY-ARCHITECTURE.md §6 “Record First, Identify Later”; AUDIT-GAP-ANALYSIS.md §2.1 Context Model gap เดิม
-
-### 9.1 judgment boundary ใน store
-- **เหตุผล:** มีการเพิ่ม `RecordIntent` + `RecordBoundary` types, helper `isPatternRecord`/`isJudgmentRecord`, และ policy helpers `markPatternOnly`/`isPatternOnly`/`clearPatternOnly` ใน store — เห็นเส้นแบ่งระหว่าง pattern-only record กับ judgment แล้ว
-- **อ้างอิง:** SECRETARY-ARCHITECTURE.md §9 “Observed Behavior ≠ Judgement”
-- **หมายเหตุ:** ยังไม่ผสานกับ capture flow จริง — ยังเป็น manual flag / helper ที่ใช้ได้เมื่อต้องการ; ยังไม่มีกรณีทดสอบสำหรับ boundary logic ใหม่ (จัดอยู่ใน 🟡 9.1)
 
 ### 24.1 Fact เพิ่มได้จาก evidence โดยตรง (ต้องตรวจสอบ existence)
 - **เหตุผล:** `addFact` ตรวจสอบว่า `evidenceIds` ที่อ้างจริงอยู่ใน store ก่อนอนุญาต
@@ -52,20 +47,22 @@
 - **เหตุผล:** Evidence immutably stored; Fact trace ไป `evidenceIds`; Inference trace ไป `evidenceIds/factIds` — ไม่สับสนกับ parsed-capture confidence เดิม
 - **อ้างอิง:** AUDIT-GAP-ANALYSIS.md §2.1 Evidence System (เดิม 🟡)
 
-### 5.2 Context สามารถแสดงออกได้หลายระดับโดยไม่เป็นเจ้าของ UI logic
-- **เหตุผล:** Context สร้างจาก evidence ที่ capture ได้
-- **อ้างอิง:** AUDIT-GAP-ANALYSIS.md §2.4 CaptureBar (เดิม ✅)
+
 
 ---
 
 ## 🟡 ต้องปรับ
 
-### 9.1 judgment gate ยังไม่ชัดเจนใน store
-- **เหตุผล:** มีช่องทางเก็บ source type / confidence / tag — แต่ยังไม่มี “gate” ที่ชัดเจนใน store ว่าเมื่อไหร่ควรบันทึกเป็น pattern vs เมื่อไหร่ตัดสิน
-- **สิ่งที่ทำไปแล้ว:** เพิ่ม `RecordIntent` + `RecordBoundary` types, helper `isPatternRecord`/`isJudgmentRecord`, และ policy helpers `markPatternOnly`/`isPatternOnly`/`clearPatternOnly` ใน store — เห็นเส้นแบ่งระหว่าง pattern-only record กับ judgment ชัดเจนขึ้นแล้ว (ดู `context/next-steps/spec-capture-to-context.md` §1)
-- **สิ่งที่ยังเหลือ:** ยังไม่มี logic อัตโนมัติที่ตัดสินว่า input นั้นเป็น pattern หรือ judgment — ยังเป็น manual flag / helper ที่ใช้ได้เมื่อต้องการ
-- **อ้างอิง:** SECRETARY-ARCHITECTURE.md §9 “สิ่งที่ Memory ควรเก็บคือ Observed Pattern ไม่ใช่การตีตราบุคลิก”
+### 9.1 judgment boundary ใน store
+- **เหตุผล:** มีการเพิ่ม `RecordIntent` + `RecordBoundary` types, helper `isPatternRecord`/`isJudgmentRecord`, และ policy helpers `markPatternOnly`/`isPatternOnly`/`clearPatternOnly` ใน store — เห็นเส้นแบ่งระหว่าง pattern-only record กับ judgment แล้ว
+- **อ้างอิง:** SECRETARY-ARCHITECTURE.md §9 “Observed Behavior ≠ Judgement”
+- **หมายเหตุ:** ยังไม่ผสานกับ capture flow จริง — ยังเป็น manual flag / helper ที่ใช้ได้เมื่อต้องการ; ยังไม่มีกรณีทดสอบสำหรับ boundary logic ใหม่ (จัดอยู่ใน 🟡 9.1)
 - **สถานะ:** 🟡 ต้องปรับ — เส้นแบ่งมีแล้ว แต่การใช้งานเชิงปฏิบัติยังไม่ผสานกับ capture flow จริง — ให้ทำ step 2 ต่อ
+
+### 9.2 policy helper ใน store
+- **เหตุผล:** เพิ่ม `markPatternOnly` / `isPatternOnly` / `clearPatternOnly` ใน store เพื่อทำเครื่องหมาย context ที่เป็น pattern-only
+- **อ้างอิง:** context/next-steps/spec-capture-to-context.md §1
+- **หมายเหตุ:** ยังไม่มี cases ทดสอบสำหรับ helper เหล่านี้ใน audit test suite — จัดอยู่ใน 🟡 9.2
 
 ### 2.4 Glue code เชื่อม CaptureBar → addContext ยังไม่เขียน
 - **เหตุผล:** ไฟล์ context/store สามารถสร้าง context จาก evidence ได้แล้ว แต่ยังไม่มีการเรียกใช้จริงจาก capture-bar
