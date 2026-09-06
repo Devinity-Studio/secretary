@@ -64,6 +64,11 @@
 - **อ้างอิง:** context/next-steps/spec-capture-to-context.md §1
 - **หมายเหตุ:** ยังไม่มี cases ทดสอบสำหรับ helper เหล่านี้ใน audit test suite — จัดอยู่ใน 🟡 9.2
 
+### 9.2 policy helper ใน store
+- **เหตุผล:** เพิ่ม `markPatternOnly` / `isPatternOnly` / `clearPatternOnly` ใน store เพื่อทำเครื่องหมาย context ที่เป็น pattern-only
+- **อ้างอิง:** context/next-steps/spec-capture-to-context.md §1
+- **หมายเหตุ:** ยังไม่มี cases ทดสอบสำหรับ helper เหล่านี้ใน audit test suite — จัดอยู่ใน 🟡 9.2
+
 ### 2.4 Glue code เชื่อม CaptureBar → addContext ยังไม่เขียน
 - **เหตุผล:** ไฟล์ context/store สามารถสร้าง context จาก evidence ได้แล้ว แต่ยังไม่มีการเรียกใช้จริงจาก capture-bar
 - **สิ่งที่ควรทำ:** เพิ่ม integration point ใน capture flow ที่ไปเรียก `createContext` + `addEvidence/AddFact` — ดูแผนใน `context/next-steps/spec-capture-to-context.md` §2 + flow ใน `context/next-steps/capture-to-context-flow.md`
