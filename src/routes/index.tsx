@@ -7,6 +7,7 @@ import { PeriodSwitch } from "@/components/period-switch";
 import { SummaryCards } from "@/components/summary-cards";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
+import { QuotaCard } from "@/components/quota-card";
 import { summarize, useFinanceStore } from "@/lib/finance/store";
 import type { PeriodKey, Transaction } from "@/lib/finance/types";
 import { formatBaht } from "@/lib/utils";
@@ -35,7 +36,10 @@ function Home() {
             {debt > 0 ? ` · หนี้บัตร ${formatBaht(debt)}` : ""}
           </p>
         </div>
-        <CaptureBar onNeedForm={() => { setEditing(null); setFormOpen(true); }} />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <CaptureBar onNeedForm={() => { setEditing(null); setFormOpen(true); }} />
+          <QuotaCard />
+        </div>
         <PeriodSwitch value={period} onChange={setPeriod} />
         <SummaryCards income={stats.income} expense={stats.expense} net={stats.net} />
         <div>

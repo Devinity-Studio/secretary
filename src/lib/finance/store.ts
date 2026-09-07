@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_ACCOUNTS } from "./categories";
 import { inRange, periodRange } from "./period";
-import type { Account, PeriodKey, Transaction, TransactionType } from "./types";
+import type { Account, PeriodKey, Transaction, TransactionType, QuotaLimit, QuotaUsage, QuotaRecord, QuotaPeriod } from "./types";
 import { createId } from "@/lib/utils";
 import {
   pushAccount as syncPushAccount,
@@ -60,6 +60,10 @@ interface FinanceState {
   accounts: Account[];
   transactions: Transaction[];
 
+  // Quota tracking
+  quotaLimits: QuotaLimit[];
+  quotaRecords: QuotaRecord[];
+
   /** Replace all data from Supabase pull (hydrates on login). */
   replaceAll: (accounts: Account[], transactions: Transaction[]) => void;
 
@@ -77,6 +81,12 @@ interface FinanceState {
   updateTransaction: (id: string, patch: Partial<Omit<Transaction, "id" | "createdAt">>) => void;
   deleteTransaction: (id: string) => void;
   defaultAccountId: (prefer?: string | null) => string;
+
+  // Quota methods
+  addQuotaRecord: (record: Omit<QuotaRecord, "id" | "timestamp">) => void;
+  getQuotaUsage: (period: QuotaPeriod) => QuotaUsage;
+  setQuotaLimit: (period: QuotaPeriod, limit: Partial<QuotaLimit>) => void;
+  resetQuotaPeriod: (period: QuotaPeriod) => void;
 }
 
 export const useFinanceStore = create<FinanceState>()(
@@ -84,6 +94,13 @@ export const useFinanceStore = create<FinanceState>()(
     (set, get) => ({
       accounts: seedAccounts(),
       transactions: [],
+
+      // Quota state
+      quotaLimits: [
+        { period: "day" as QuotaPeriod, maxCostUsd: 5, maxRequests: 50 },
+        { period: "month" as QuotaPeriod, maxCostUsd: 50, maxRequests: 500 },
+      ],
+      quotaRecords: [],
 
       replaceAll: (accounts, transactions) => {
         set({ accounts, transactions });
@@ -158,6 +175,69 @@ export const useFinanceStore = create<FinanceState>()(
           transactions: get().transactions.filter((t) => t.id !== id),
         });
         syncDeleteTransaction(id).catch(() => {});
+      },
+
+      // Quota methods
+      addQuotaRecord: (record) => {
+        const now = new Date().toISOString();
+        const fullRecord: QuotaRecord = {
+          ...record,
+          id: createId(),
+          timestamp: now,
+        };
+        set({ quotaRecords: [...get().quotaRecords, fullRecord] });
+      },
+
+      getQuotaUsage: (period: QuotaPeriod) => {
+        const now = new Date();
+        const records = get().quotaRecords;
+        const filtered = records.filter((r) => {
+          const d = new Date(r.timestamp);
+          if (period === "day") {
+            return d.toDateString() === now.toDateString();
+          }
+          // month
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        });
+
+        const costUsd = filtered.reduce((s, r) => s + r.costUsd, 0);
+        const requestCount = filtered.reduce((s, r) => s + r.requestCount, 0);
+        const tokenUsage = filtered.reduce(
+          (s, r) => ({
+            input: s.input + r.inputTokens,
+            output: s.output + r.outputTokens,
+            total: s.total + r.inputTokens + r.outputTokens,
+          }),
+          { input: 0, output: 0, total: 0 },
+        );
+
+        return {
+          period,
+          costUsd,
+          requestCount,
+          tokenUsage,
+          lastUpdated: filtered.length > 0 ? filtered[filtered.length - 1].timestamp : now.toISOString(),
+        };
+      },
+
+      setQuotaLimit: (period: QuotaPeriod, patch) => {
+        set({
+          quotaLimits: get().quotaLimits.map((l) =>
+            l.period === period ? { ...l, ...patch } : l,
+          ),
+        });
+      },
+
+      resetQuotaPeriod: (period: QuotaPeriod) => {
+        const now = new Date();
+        const keepSuffix = period === "day"
+          ? (r: QuotaRecord) => new Date(r.timestamp).toDateString() !== now.toDateString()
+          : (r: QuotaRecord) =>
+              new Date(r.timestamp).getMonth() !== now.getMonth() ||
+              new Date(r.timestamp).getFullYear() !== now.getFullYear();
+        set({
+          quotaRecords: get().quotaRecords.filter(keepSuffix),
+        });
       },
     }),
     {

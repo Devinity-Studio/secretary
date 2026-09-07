@@ -406,8 +406,13 @@ export function normalizeHeadContext(ctx = {}) {
   // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
   // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
   // a correct bake is unchanged.
+  const snapshotSite = snapshotOgIdentity(cwd).site;
+  const siteIdentity =
+    ctx.site !== undefined
+      ? ctx.site
+      : { ...snapshotSite, title: "" };
   const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
+    siteIdentity,
     cwd,
   );
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");

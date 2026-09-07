@@ -460,7 +460,7 @@ secretary/
 - [ ] Conversation → Agreement → Memory flow
 
 **Risk:** High — Network effects and trust model
-**Dependency:** Step 5.1
+**Dependency:** Step 5.2
 
 ---
 

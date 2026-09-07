@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { CalendarDays, PiggyBank, Target, Wallet } from "lucide-react";
+import { CalendarDays, PiggyBank, Target, Wallet, Brain } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { QuotaCard } from "./quota-card";
 
 const NAV = [
   { to: "/", label: "วันนี้", icon: CalendarDays },
@@ -9,6 +10,7 @@ const NAV = [
   { to: "/goals", label: "เป้าหมาย", icon: Target },
   { to: "/calendar", label: "ปฏิทิน", icon: CalendarDays },
   { to: "/accounts", label: "บัญชี", icon: PiggyBank },
+  { to: "/quota", label: "AI Quota", icon: Brain },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {

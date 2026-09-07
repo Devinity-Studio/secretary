@@ -15,6 +15,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as QuotaRouteImport } from './routes/quota'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuotaRoute = QuotaRouteImport.update({
+  id: '/quota',
+  path: '/quota',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/finance': typeof FinanceRoute
   '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
+  '/quota': typeof QuotaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/finance': typeof FinanceRoute
   '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
+  '/quota': typeof QuotaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +79,27 @@ export interface FileRoutesById {
   '/finance': typeof FinanceRoute
   '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
+  '/quota': typeof QuotaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/accounts' | '/calendar' | '/finance' | '/goals' | '/login'
+  fullPaths:
+    | '/'
+    | '/accounts'
+    | '/calendar'
+    | '/finance'
+    | '/goals'
+    | '/login'
+    | '/quota'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/accounts' | '/calendar' | '/finance' | '/goals' | '/login'
+  to:
+    | '/'
+    | '/accounts'
+    | '/calendar'
+    | '/finance'
+    | '/goals'
+    | '/login'
+    | '/quota'
   id:
     | '__root__'
     | '/'
@@ -85,6 +108,7 @@ export interface FileRouteTypes {
     | '/finance'
     | '/goals'
     | '/login'
+    | '/quota'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +118,7 @@ export interface RootRouteChildren {
   FinanceRoute: typeof FinanceRoute
   GoalsRoute: typeof GoalsRoute
   LoginRoute: typeof LoginRoute
+  QuotaRoute: typeof QuotaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quota': {
+      id: '/quota'
+      path: '/quota'
+      fullPath: '/quota'
+      preLoaderRoute: typeof QuotaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceRoute: FinanceRoute,
   GoalsRoute: GoalsRoute,
   LoginRoute: LoginRoute,
+  QuotaRoute: QuotaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -654,6 +654,202 @@ export const RECORD_BOUNDARY_LABELS: Record<RecordIntent["kind"], string> = {
 };
 
 // ════════════════════════════════════════════════════════════════════════════════
+// SCOPE — Project/Topic scoping for retrieval (extension point for Current State)
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ScopeType represents the level of scoping for retrieval.
+ *
+ * Retrieval is SELECTIVE by default — never return everything.
+ * Callers must express at least one scope constraint.
+ */
+export type ScopeType =
+  | { kind: "project"; projectId: string }
+  | { kind: "topic"; topicId: string; projectId?: string }
+  | { kind: "artifact"; artifactId: string; projectId?: string }
+  | { kind: "entity"; entityType: EntityType; entityId: string }
+  | { kind: "context"; contextId: string }
+  | { kind: "all" }; // Explicit opt-in to all — use sparingly
+
+/**
+ * ScopeSubject is the entity a scope refers to.
+ * Used in RetrievalResult metadata to explain what was scoped.
+ */
+export interface ScopeSubject {
+  scopeType: ScopeType["kind"];
+  label: string;
+  id: string;
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// CONTEXT QUERY — Retrieval contract
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ContextQuery expresses a scoped, selective retrieval request.
+ *
+ * Principle: Retrieval is closed by default. Callers must express intent.
+ * An empty query (no filters, no scope) is treated as "all non-archived"
+ * but callers should prefer explicit scope.
+ */
+export interface ContextQuery {
+  /**
+   * Scope — what context this retrieval is about.
+   * Defaults to { kind: "all" } if not specified (returns all non-archived).
+   * Prefer explicit scope: project, topic, artifact, entity, or single context.
+   */
+  scope?: ScopeType;
+
+  /**
+   * Filter by Context type (e.g., "financial.transaction").
+   * Optional — no type filter if omitted.
+   */
+  type?: string;
+
+  /**
+   * Filter by tags. Context must have ALL specified tags (AND semantics).
+   * Optional — no tag filter if omitted.
+   */
+  tags?: string[];
+
+  /**
+   * Filter by lifecycle status.
+   * Optional — no lifecycle filter if omitted.
+   */
+  lifecycle?: LifecycleStatus;
+
+  /**
+   * Filter by source type.
+   * Optional — no source filter if omitted.
+   */
+  source?: SourceType;
+
+  /**
+   * Filter by priority range (inclusive).
+   * Optional — no priority filter if omitted.
+   */
+  priorityRange?: { min: number; max: number };
+
+  /**
+   * Filter by time range (ISO timestamps, inclusive start, exclusive end).
+   * If omitted, no time filter.
+   */
+  timeRange?: { since: string; until?: string };
+
+  /**
+   * Query/relevance criteria.
+   * Lightweight deterministic matching: checks if query terms appear in
+   * evidence content text or context type/tags.
+   * Optional — no text matching if omitted.
+   */
+  query?: string | string[];
+
+  /**
+   * Max results to return. Default 100. Set to 0 for no limit.
+   */
+  limit?: number;
+
+  /**
+   * Ordering: "createdAt" (default, ascending = oldest first)
+   * or "createdAt-desc" (newest first).
+   * Future: add other orderings as extension.
+   */
+  orderBy?: "createdAt" | "createdAt-desc" | "priority" | "priority-desc";
+}
+
+export const DEFAULT_RETRIEVAL_LIMIT = 100;
+
+// ════════════════════════════════════════════════════════════════════════════════
+// RETRIEVAL RESULT — What was retrieved + why
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * RetrievalResult is the output of a ContextQuery.
+ *
+ * It tells the caller:
+ * - what contexts were retrieved
+ * - how many matched total (before limit)
+ * - what scope/filters were applied
+ * - what ordering rule was used
+ * - whether pattern-only contexts are included (they are — preserved)
+ */
+export interface RetrievalResult {
+  /** The retrieved contexts (may be limited) */
+  contexts: SecretaryContext[];
+
+  /** Total contexts that matched before limit was applied */
+  totalMatched: number;
+
+  /** The query that produced this result (for transparency) */
+  query: ContextQuery;
+
+  /** Scope subject label for human-readable explanation */
+  scopeLabel: string;
+
+  /** Ordering rule applied */
+  ordering: string;
+
+  /** Whether pattern-only contexts are included (always true — preserved) */
+  includesPatternOnly: boolean;
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// RETRIEVAL METADATA — Per-context match explanation (optional detail)
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * RetrievalMatch explains why a single context matched the query.
+ * This is for debugging/audit, not required for normal consumption.
+ */
+export interface RetrievalMatch {
+  contextId: string;
+  matchedScope: boolean;
+  matchedType: boolean;
+  matchedTags: boolean;
+  matchedLifecycle: boolean;
+  matchedSource: boolean;
+  matchedPriority: boolean;
+  matchedTimeRange: boolean;
+  matchedQuery: boolean;
+  relevanceScore: number; // 0-1, higher = more relevant (deterministic)
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// RETRIEVAL OPTIONS — Extension point for future retrieval strategies
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * RetrievalOptions allows callers to request specific retrieval behavior.
+ * This is the extension boundary for future strategies:
+ * - keyword/relevance retrieval (now)
+ * - semantic/vector retrieval (future)
+ * - Agent-specific retrieval (future)
+ * - external knowledge retrieval (future)
+ *
+ * The default implementation ignores strategy and uses deterministic baseline.
+ * Future strategies can interpret strategy field and return appropriate results.
+ */
+export interface RetrievalOptions {
+  /**
+   * Which retrieval strategy to use.
+   * "deterministic" (default) — scope + filter + order, no ranking magic.
+   * Future: "keyword", "semantic", "agent", "external".
+   */
+  strategy?: "deterministic" | "keyword" | "semantic" | "agent" | "external";
+
+  /**
+   * Include pattern-only contexts in results.
+   * Default true — pattern-only is a valid context, not filtered out.
+   */
+  includePatternOnly?: boolean;
+
+  /**
+   * Include archived contexts. Default false.
+   */
+  includeArchived?: boolean;
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
 // DOMAIN TYPES — Predefined Context types for common domains
 // ════════════════════════════════════════════════════════════════════════════════
 
@@ -674,6 +870,73 @@ export const CONTEXT_DOMAIN_TYPES = {
 
 export type ContextDomainType =
   (typeof CONTEXT_DOMAIN_TYPES)[keyof typeof CONTEXT_DOMAIN_TYPES];
+
+// ════════════════════════════════════════════════════════════════════════════════
+// RETRIEVAL HELPERS — Deterministic matching logic (used by retrieval layer)
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Compute a deterministic relevance score for a context against a query string.
+ *
+ * This is NOT semantic/vector ranking. It's a lightweight baseline:
+ * - Exact type match: +0.4
+ * - Tag match: +0.15 per matching tag (max 0.3)
+ * - Evidence text contains query term: +0.2
+ * - Context type string contains query term: +0.1
+ *
+ * Score is deterministic given the same inputs.
+ */
+export function computeRelevanceScore(
+  context: Pick<SecretaryContext, "type" | "tags" | "evidenceIds">,
+  evidenceMap: Record<string, Evidence>,
+  query: string | string[],
+): number {
+  const terms = Array.isArray(query) ? query : [query];
+  let score = 0;
+
+  for (const term of terms) {
+    const lowerTerm = term.toLowerCase();
+
+    // Type match
+    if (context.type.toLowerCase().includes(lowerTerm)) {
+      score += 0.4;
+    }
+
+    // Tag match (max 0.3 total)
+    let tagMatches = 0;
+    for (const tag of context.tags) {
+      if (tag.toLowerCase().includes(lowerTerm)) {
+        tagMatches++;
+      }
+    }
+
+    if (tagMatches > 0) {
+      score += Math.min(0.3, tagMatches * 0.15);
+    }
+
+    // Evidence text match
+    for (const evidenceId of context.evidenceIds) {
+      const ev = evidenceMap[evidenceId];
+      if (ev) {
+        const textContent =
+          ev.content.kind === "text"
+            ? ev.content.text
+            : ev.content.kind === "hybrid"
+              ? ev.content.text
+              : "";
+        if (textContent.toLowerCase().includes(lowerTerm)) {
+          score += 0.2;
+          break; // One evidence match per term is enough
+        }
+      }
+    }
+
+    // Context type string match (already counted above, skip to avoid double)
+    // Note: type match already counted, so we don't add again here.
+  }
+
+  return Math.min(1, score);
+}
 
 // ════════════════════════════════════════════════════════════════════════════════
 // DERIVED TYPES — For UI convenience (NOT part of canonical model)
@@ -708,3 +971,10 @@ export interface ContextSummary {
   priority: number;
   tags: string[];
 }
+
+// ════════════════════════════════════════════════════════════════════════════════
+// EXPORTS — Retrieval types for consumers
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Retrieval types are exported from retrieval.ts for consumers
+// Import them directly from ./retrieval for clarity

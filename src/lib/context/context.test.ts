@@ -16,7 +16,51 @@
  * 10. Related Contexts for future S2S
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert";
+
+// Custom expect helper for node:test
+function expect(actual: unknown): {
+  toBe(expected: unknown): void;
+  toEqual(expected: unknown): void;
+  toContain(expected: string): void;
+  toBeGreaterThan(expected: number): void;
+  toBeLessThan(expected: number): void;
+  toBeDefined(): void;
+  toBeNull(): void;
+  toMatch(expected: RegExp): void;
+  toBeUndefined(): void;
+} {
+  return {
+    toBe(expected: unknown) {
+      assert.strictEqual(actual, expected);
+    },
+    toEqual(expected: unknown) {
+      assert.deepStrictEqual(actual, expected);
+    },
+    toContain(expected: string) {
+      assert.ok(String(actual).includes(expected));
+    },
+    toBeGreaterThan(expected: number) {
+      assert.ok(Number(actual) > expected);
+    },
+    toBeLessThan(expected: number) {
+      assert.ok(Number(actual) < expected);
+    },
+    toBeDefined() {
+      assert.ok(actual !== undefined && actual !== null);
+    },
+    toBeNull() {
+      assert.strictEqual(actual, null);
+    },
+    toMatch(expected: RegExp) {
+      assert.ok(expected.test(String(actual)));
+    },
+    toBeUndefined() {
+      assert.strictEqual(actual, undefined);
+    },
+  };
+}
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { createId } from "@/lib/utils";

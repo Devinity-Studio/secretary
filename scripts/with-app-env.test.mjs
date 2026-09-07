@@ -60,7 +60,10 @@ test("an explicit process-env override wins over the file", () => {
 });
 
 test("the template ships auth off", () => {
-  assert.deepEqual(readAppEnv(projectRoot()), { VITE_AUTH_ENABLED: "false" });
+  const appEnv = readAppEnv(projectRoot());
+  assert.equal(appEnv.VITE_AUTH_ENABLED, "false");
+  assert.match(appEnv.VITE_SUPABASE_URL ?? "", /^https:\/\//);
+  assert.equal(typeof appEnv.VITE_SUPABASE_ANON_KEY, "string");
 });
 
 test("vite loadEnv resolves the wrapped value", () => {

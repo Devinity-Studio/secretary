@@ -15,7 +15,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { createId } from "@/lib/utils";
+import { createId } from "../utils.ts";
 import type {
   SecretaryContext,
   CreateContextInput,
@@ -55,10 +55,9 @@ const memoryStorage: Storage = {
 // STATE INTERFACE
 // ════════════════════════════════════════════════════════════════════════════════
 
-interface ContextState {      /** เซตของ context ID ที่มี pattern-only record (ไม่ใช่ judgment) */
-      patternOnlyContextIds: Set<string>;
-      
-      
+interface ContextState {
+  /** เซตของ context ID ที่มี pattern-only record (ไม่ใช่ judgment) */
+  patternOnlyContextIds: Set<string>;
 
   /** All contexts — keyed by ID */
   contexts: Record<string, SecretaryContext>;
@@ -186,6 +185,11 @@ interface ContextState {      /** เซตของ context ID ที่มี 
 
   /** ล้าง pattern-only context ID ออก */
   clearPatternOnly: (contextId: string) => void;
+
+  // ── Retrieval support (read-only, for retrieval layer) ─────────────────────
+
+  /** Get all evidence as a map for retrieval operations */
+  getAllEvidence: () => Record<string, Evidence>;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -197,6 +201,7 @@ export const useContextStore = create<ContextState>()(
     (set, get) => ({
       contexts: {},
       evidence: {},
+      patternOnlyContextIds: new Set<string>(),
 
       // ── Context CRUD ────────────────────────────────────────────────────────
 
@@ -891,6 +896,12 @@ export const useContextStore = create<ContextState>()(
           evidence: evidenceMap,
           patternOnlyContextIds: new Set<string>(),
         });
+      },
+
+      // ── Retrieval support ──────────────────────────────────────────────────
+
+      getAllEvidence: () => {
+        return { ...get().evidence };
       },
     }),
     {

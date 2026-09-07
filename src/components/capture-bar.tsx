@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { categoryName } from "@/lib/finance/categories";
 import { parseCapture } from "@/lib/finance/parser";
 import { useFinanceStore } from "@/lib/finance/store";
+import { useContextStore } from "@/lib/context/store";
+import {
+  createContextFromCapture,
+} from "@/lib/context/capture";
 import type { TransactionType } from "@/lib/finance/types";
 import { formatBaht } from "@/lib/utils";
 
@@ -42,7 +46,9 @@ export function CaptureBar({ onNeedForm }: { onNeedForm: () => void }) {
       onNeedForm();
       return;
     }
-    addTransaction({
+
+    // ── Finance transaction creation (existing behavior preserved) ──
+    const transaction = addTransaction({
       type: parsed.type,
       title: parsed.title,
       amount: parsed.amount,
@@ -51,6 +57,20 @@ export function CaptureBar({ onNeedForm }: { onNeedForm: () => void }) {
       category: parsed.category ?? (parsed.type === "income" ? "other_income" : "other_expense"),
       date: parsed.date,
     });
+
+    // ── Context creation (new integration) ──
+    // Create Evidence from original input and Context through the domain model.
+    // This runs alongside Finance creation — both capture the same user intent
+    // but through different domain lenses:
+    //   - Finance: transaction with amount, account, category
+    //   - Context: evidence + tentative context with provenance
+    try {
+      createContextFromCapture(value, accounts);
+    } catch (err) {
+      // Context creation is best-effort; don't block Finance write if it fails
+      console.warn("[Secretary] Context creation failed:", err);
+    }
+
     toast.success("บันทึกแล้ว");
     setValue("");
   }
