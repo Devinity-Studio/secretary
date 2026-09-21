@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CaptureBar } from "@/components/capture-bar";
+import { ContextInput } from "@/components/context-input";
+import { ContextFeed } from "@/components/context-feed";
 import { Modal } from "@/components/modal";
 import { PeriodSwitch } from "@/components/period-switch";
 import { SummaryCards } from "@/components/summary-cards";
@@ -40,6 +42,11 @@ function Home() {
           <CaptureBar onNeedForm={() => { setEditing(null); setFormOpen(true); }} />
           <QuotaCard />
         </div>
+        <ContextInput />
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted">บริบทล่าสุด</h2>
+          <ContextFeed limit={5} />
+        </section>
         <PeriodSwitch value={period} onChange={setPeriod} />
         <SummaryCards income={stats.income} expense={stats.expense} net={stats.net} />
         <div>
