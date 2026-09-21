@@ -90,3 +90,37 @@ Good next confirmation reads, without changing anything:
 1. Whether auth/sync is actually wired into the live routes today.
 2. What the Audit/Gap + Architecture docs say the next continuation point is.
 3. Whether the `artifacts/mobile/` tree is a separate app or parallel to the web app.
+
+## 6. Startup Gate evidence (post Windows command-resolution fix)
+
+Symptom: `npm run dev` died with `spawn vite ENOENT` on Windows.
+
+Root cause: npm installs only `.cmd` / `.ps1` shims on Windows, and Node's
+`spawn` (no shell) ignores `PATHEXT`, so `scripts/with-app-env.mjs`
+spawning `"vite"` directly could never resolve it. POSIX `.bin` shims are
+real executables, which is why the sandbox path always worked.
+
+Minimal fix: `resolveCommand()` in `scripts/with-app-env.mjs` — on win32
+only, a command that names a local package is rerouted to its `bin/*.js`
+entry via `process.execPath`. POSIX behavior untouched; `preview.mjs` and
+`startup.sh` deliberately not modified.
+
+Gate results (all reproduced on this machine):
+
+| Gate | Status |
+| --- | --- |
+| TypeScript (`tsc --noEmit`) | ✅ PASS |
+| Vite startup (`startup.sh` → dev on `0.0.0.0:8080`) | ✅ PASS |
+| Build (`npm run build`) | ✅ PASS |
+| Built-output preview (loopback :8081) | ✅ HTTP 200 |
+| Desktop UI render (screenshot inspected) | ✅ PASS |
+| Mobile UI render 390×844 (no overflow) | ✅ PASS |
+| Console errors | ✅ none |
+| App logic/UI changes | 🔒 none (infra-only fix) |
+
+Regression suite: scripts 193/195 + app logic 38/38 = 231/233. The 2
+failures (`check-auth-invariant.test.mjs`, `with-app-env.test.mjs`) both
+die at `symlinkSync` with `EPERM` during their own setup — Windows
+requires admin/Developer Mode to create symlinks. Recorded as an
+environment limitation, not an application failure; they pass on the
+POSIX sandbox.

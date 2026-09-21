@@ -20,7 +20,7 @@
  * `process.env`, which is why the merge has to happen before Vite starts.
  */
 import { spawn } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { constants as osConstants } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,6 +88,29 @@ export function projectRoot() {
 }
 
 /**
+ * Resolve a local package bin to its JS entry on Windows.
+ *
+ * npm installs only `.cmd` / `.ps1` shims there, and `spawn` without `shell`
+ * ignores `PATHEXT`, so `spawn("vite")` is ENOENT even though the shim exists.
+ * POSIX keeps `.bin/<name>` executables, so everywhere else the command is
+ * passed through untouched. Returns a small argv prefix to prepend.
+ */
+export function resolveCommand(command, root = projectRoot()) {
+  if (process.platform !== "win32") return [command, []];
+  const pkgDir = join(root, "node_modules", command);
+  try {
+    const pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"));
+    const bin = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.[command];
+    if (typeof bin === "string" && existsSync(join(pkgDir, bin))) {
+      return [process.execPath, [join(pkgDir, bin)]];
+    }
+  } catch {
+    // Not a local package (shells, `node` itself, …): spawn as typed.
+  }
+  return [command, []];
+}
+
+/**
  * Whether `moduleUrl` is the script node was asked to run.
  *
  * Both sides are resolved through symlinks: node realpaths `import.meta.url`
@@ -111,7 +134,8 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  const [resolved, prefixArgs] = resolveCommand(command);
+  const child = spawn(resolved, [...prefixArgs, ...args], { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
