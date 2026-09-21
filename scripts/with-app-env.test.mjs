@@ -59,9 +59,15 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
-test("the template ships auth off", () => {
+test("the workspace app-env resolves to a boolean flag with Supabase wired", () => {
+  // The workspace opted into sign-in (2368359) — the invariant that matters is
+  // that the file resolves to a strict "true"/"false" and dev/build agree on
+  // it (check-auth-invariant), not that auth stays off forever.
   const appEnv = readAppEnv(projectRoot());
-  assert.equal(appEnv.VITE_AUTH_ENABLED, "false");
+  assert.ok(
+    appEnv.VITE_AUTH_ENABLED === "true" || appEnv.VITE_AUTH_ENABLED === "false",
+    `VITE_AUTH_ENABLED must be "true" or "false", got ${JSON.stringify(appEnv.VITE_AUTH_ENABLED)}`,
+  );
   assert.match(appEnv.VITE_SUPABASE_URL ?? "", /^https:\/\//);
   assert.equal(typeof appEnv.VITE_SUPABASE_ANON_KEY, "string");
 });
@@ -76,14 +82,17 @@ test("vite loadEnv resolves the wrapped value", () => {
   assert.equal(merged.VITE_AUTH_ENABLED, "false");
 });
 
-test("the wrapped command runs with the app env applied", async () => {
+test("the wrapped command runs with the file's app env applied", async () => {
+  // Whatever the workspace chose in .grok/app-env.json is what the wrapped
+  // command must see — the wrapper's job is fidelity, not a specific value.
+  const expected = readAppEnv(projectRoot()).VITE_AUTH_ENABLED;
   const { stdout } = await execFileAsync(process.execPath, [
     WRAPPER,
     process.execPath,
     "-e",
     PRINT_FLAG,
   ]);
-  assert.equal(stdout, "false");
+  assert.equal(stdout, expected);
 });
 
 test("the wrapped command sees an explicit override, not the file value", async () => {
@@ -134,5 +143,5 @@ test("the CLI still runs when invoked through a symlinked path", async (t) => {
     "-e",
     PRINT_FLAG,
   ]);
-  assert.equal(stdout, "false");
+  assert.equal(stdout, readAppEnv(projectRoot()).VITE_AUTH_ENABLED);
 });
