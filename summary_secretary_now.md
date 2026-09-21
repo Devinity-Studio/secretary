@@ -118,9 +118,17 @@ Gate results (all reproduced on this machine):
 | Console errors | ✅ none |
 | App logic/UI changes | 🔒 none (infra-only fix) |
 
-Regression suite: scripts 193/195 + app logic 38/38 = 231/233. The 2
-failures (`check-auth-invariant.test.mjs`, `with-app-env.test.mjs`) both
-die at `symlinkSync` with `EPERM` during their own setup — Windows
-requires admin/Developer Mode to create symlinks. Recorded as an
-environment limitation, not an application failure; they pass on the
-POSIX sandbox.
+Regression suite: scripts 193 pass / 2 skipped + app logic 38/38 — zero
+failures on both platforms. The 2 symlink tests
+(`check-auth-invariant.test.mjs`, `with-app-env.test.mjs`) need OS-level
+symlink support (admin/Developer Mode on Windows, where their setup used
+to die at `symlinkSync` with `EPERM`); they now probe the capability and
+skip with an explicit reason instead of failing, and still run for real
+on the POSIX sandbox.
+
+Follow-up found while re-running `npm test` on Windows: the single-quoted
+`scripts/**/*.test.mjs` glob never survives cmd.exe, so the infra half
+of the suite was silently 0 tests there (bash expanded it, masking the
+bug). The test script now passes `"scripts/*.test.mjs"` unquoted so
+node's own glob resolves it on every platform — same 195 tests in both
+shells.
