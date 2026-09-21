@@ -81,6 +81,11 @@ export function useSpeechRecognition() {
   useEffect(() => {
     setSupported(getRecognitionCtor() !== null);
   }, []);
+  /** สถานะล่าสุดแบบ ref — ให้ start() อ่านสถานะปัจจุบันได้โดยไม่เพิ่ม dependency */
+  const statusRef = useRef<SpeechState["status"]>(initialSpeechState.status);
+  useEffect(() => {
+    statusRef.current = state.status;
+  }, [state.status]);
 
   const clearTimers = useCallback(() => {
     if (finalizeTimerRef.current !== null) {
@@ -128,10 +133,12 @@ export function useSpeechRecognition() {
     }
 
     // ปุ่มเดิมทำหน้าที่ toggle: ฟังอยู่ = กดหยุด
-    if (recognitionRef.current) {
+    if (recognitionRef.current && statusRef.current !== "error") {
       stop();
       return;
     }
+    // หลัง error อาจไม่มี onend ตามมา — เคลียร์อ้างอิงเก่าให้กดเริ่มใหม่ได้เสมอ
+    recognitionRef.current = null;
 
     clearTimers();
     interimRef.current = "";
