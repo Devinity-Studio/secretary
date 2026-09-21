@@ -1,11 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { CalendarDays, PiggyBank, Target, Wallet, Brain } from "lucide-react";
+import { CalendarDays, PiggyBank, Target, Wallet, Brain, Layers } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { QuotaCard } from "./quota-card";
 
 const NAV = [
   { to: "/", label: "วันนี้", icon: CalendarDays },
+  { to: "/context", label: "บริบท", icon: Layers },
   { to: "/finance", label: "การเงิน", icon: Wallet },
   { to: "/goals", label: "เป้าหมาย", icon: Target },
   { to: "/calendar", label: "ปฏิทิน", icon: CalendarDays },
