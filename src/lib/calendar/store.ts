@@ -7,6 +7,7 @@ import {
   pushEvent as syncPushEvent,
   deleteEvent as syncDeleteEvent,
 } from "@/lib/supabase/sync";
+import { notifyPushFailure } from "@/lib/supabase/sync-status";
 
 interface CalendarState {
   events: CalendarEvent[];
@@ -60,7 +61,7 @@ export const useCalendarStore = create<CalendarState>()(
           updatedAt: now,
         };
         set({ events: [...get().events, event] });
-        syncPushEvent(event).catch(() => {});
+        syncPushEvent(event).catch((err) => notifyPushFailure(err));
         return event;
       },
 
@@ -70,12 +71,12 @@ export const useCalendarStore = create<CalendarState>()(
         );
         set({ events: updated });
         const row = updated.find((e) => e.id === id);
-        if (row) syncPushEvent(row).catch(() => {});
+        if (row) syncPushEvent(row).catch((err) => notifyPushFailure(err));
       },
 
       deleteEvent: (id) => {
         set({ events: get().events.filter((e) => e.id !== id) });
-        syncDeleteEvent(id).catch(() => {});
+        syncDeleteEvent(id).catch((err) => notifyPushFailure(err));
       },
 
       eventsForDate: (date) => {

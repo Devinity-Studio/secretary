@@ -9,6 +9,7 @@
  *   - Supabase is the durable backup (survives device switch, clearing storage).
  */
 import { getSupabase } from "./client";
+import { notifyPullFailure } from "./sync-status";
 import type { Account, Transaction } from "@/lib/finance/types";
 import type { Goal, Contribution } from "@/lib/goals/types";
 import type { CalendarEvent } from "@/lib/calendar/types";
@@ -211,6 +212,15 @@ export async function pullAll(): Promise<SyncData | null> {
     supabase.from(TABLES.contributions).select("*").eq("user_id", userId),
     supabase.from(TABLES.calendarEvents).select("*").eq("user_id", userId).is("deleted_at", null),
   ]);
+
+  // A failed query must never masquerade as "remote is empty" — that used to
+  // turn schema/RLS/network problems into a silent full local→cloud overwrite
+  // on first login. Report it and let the caller bail on the null result.
+  const firstError = [accountsRes, txRes, goalsRes, contribRes, eventsRes].find((r) => r.error)?.error;
+  if (firstError) {
+    notifyPullFailure(firstError.message);
+    return null;
+  }
 
   return {
     accounts: (accountsRes.data ?? []).map(rowToAccount),

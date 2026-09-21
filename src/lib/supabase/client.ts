@@ -21,11 +21,21 @@ export function createClient() {
 let client: ReturnType<typeof createClient> | null = null;
 
 export function getSupabase() {
-  if (typeof window === "undefined") {
-    // Server-side during SSR: return a throwaway client (auth pages won't SSR)
-    // or null — the real client mounts in the browser.
-    return createClient();
+  if (typeof window !== "undefined") {
+    client ??= createClient();
+    return client;
   }
-  client ??= createClient();
-  return client;
+  // Server-side (SSR): auth pages don't SSR, so nothing should touch this —
+  // but a module import must never pay for client construction either. Return
+  // a lazy throwaway that only builds when a property is actually accessed,
+  // so a missing/invalid env can fail one call instead of every route whose
+  // import graph reaches this module.
+  let instance: ReturnType<typeof createClient> | null = null;
+  return new Proxy<ReturnType<typeof createClient>>({} as ReturnType<typeof createClient>, {
+    get(_target, prop, receiver) {
+      instance ??= createClient();
+      const value = Reflect.get(instance, prop, receiver);
+      return typeof value === "function" ? value.bind(instance) : value;
+    },
+  });
 }

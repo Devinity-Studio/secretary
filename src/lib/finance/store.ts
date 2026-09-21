@@ -9,6 +9,7 @@ import {
   pushTransaction as syncPushTransaction,
   deleteTransaction as syncDeleteTransaction,
 } from "@/lib/supabase/sync";
+import { notifyPushFailure } from "@/lib/supabase/sync-status";
 
 function seedAccounts(): Account[] {
   const now = new Date().toISOString();
@@ -117,7 +118,7 @@ export const useFinanceStore = create<FinanceState>()(
           createdAt: new Date().toISOString(),
         };
         set({ accounts: [...get().accounts, acc] });
-        syncPushAccount(acc).catch(() => {});
+        syncPushAccount(acc).catch((err) => notifyPushFailure(err));
       },
 
       defaultAccountId: (prefer) => {
@@ -145,7 +146,7 @@ export const useFinanceStore = create<FinanceState>()(
           transactions: [tx, ...get().transactions],
           accounts: applyTx(get().accounts, tx, 1),
         });
-        syncPushTransaction(tx).catch(() => {});
+        syncPushTransaction(tx).catch((err) => notifyPushFailure(err));
         return tx;
       },
 
@@ -164,7 +165,7 @@ export const useFinanceStore = create<FinanceState>()(
           accounts,
           transactions: get().transactions.map((t) => (t.id === id ? next : t)),
         });
-        syncPushTransaction(next).catch(() => {});
+        syncPushTransaction(next).catch((err) => notifyPushFailure(err));
       },
 
       deleteTransaction: (id) => {
@@ -174,7 +175,7 @@ export const useFinanceStore = create<FinanceState>()(
           accounts: applyTx(get().accounts, prev, -1),
           transactions: get().transactions.filter((t) => t.id !== id),
         });
-        syncDeleteTransaction(id).catch(() => {});
+        syncDeleteTransaction(id).catch((err) => notifyPushFailure(err));
       },
 
       // Quota methods

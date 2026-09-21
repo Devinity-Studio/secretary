@@ -8,6 +8,7 @@ import {
   pushContribution as syncPushContribution,
   deleteContribution as syncDeleteContribution,
 } from "@/lib/supabase/sync";
+import { notifyPushFailure } from "@/lib/supabase/sync-status";
 
 function computeStatus(goal: Goal, now: string): GoalStatus {
   if (goal.status === "completed" || goal.status === "cancelled") return goal.status;
@@ -80,7 +81,7 @@ export const useGoalStore = create<GoalState>()(
           updatedAt: now,
         };
         set({ goals: [...get().goals, goal] });
-        syncPushGoal(goal).catch(() => {});
+        syncPushGoal(goal).catch((err) => notifyPushFailure(err));
         return goal;
       },
 
@@ -90,7 +91,7 @@ export const useGoalStore = create<GoalState>()(
         );
         set({ goals: updated });
         const row = updated.find((g) => g.id === id);
-        if (row) syncPushGoal(row).catch(() => {});
+        if (row) syncPushGoal(row).catch((err) => notifyPushFailure(err));
       },
 
       deleteGoal: (id) => {
@@ -98,7 +99,7 @@ export const useGoalStore = create<GoalState>()(
           goals: get().goals.filter((g) => g.id !== id),
           contributions: get().contributions.filter((c) => c.goalId !== id),
         });
-        syncDeleteGoal(id).catch(() => {});
+        syncDeleteGoal(id).catch((err) => notifyPushFailure(err));
       },
 
       completeGoal: (id) => {
@@ -107,7 +108,7 @@ export const useGoalStore = create<GoalState>()(
         );
         set({ goals: updated });
         const row = updated.find((g) => g.id === id);
-        if (row) syncPushGoal(row).catch(() => {});
+        if (row) syncPushGoal(row).catch((err) => notifyPushFailure(err));
       },
 
       addContribution: (input) => {
@@ -121,7 +122,7 @@ export const useGoalStore = create<GoalState>()(
           createdAt: now,
         };
         set({ contributions: [...get().contributions, c] });
-        syncPushContribution(c).catch(() => {});
+        syncPushContribution(c).catch((err) => notifyPushFailure(err));
         return c;
       },
 
@@ -131,14 +132,14 @@ export const useGoalStore = create<GoalState>()(
         );
         set({ contributions: updated });
         const row = updated.find((c) => c.id === id);
-        if (row) syncPushContribution(row).catch(() => {});
+        if (row) syncPushContribution(row).catch((err) => notifyPushFailure(err));
       },
 
       deleteContribution: (id) => {
         set({
           contributions: get().contributions.filter((c) => c.id !== id),
         });
-        syncDeleteContribution(id).catch(() => {});
+        syncDeleteContribution(id).catch((err) => notifyPushFailure(err));
       },
 
       goalProgress: (goalId) => {
