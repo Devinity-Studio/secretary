@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ContextRouteImport } from './routes/context'
+import { Route as ContextCardDemoRouteImport } from './routes/context-card-demo'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as LoginRouteImport } from './routes/login'
@@ -36,6 +37,11 @@ const CalendarRoute = CalendarRouteImport.update({
 const ContextRoute = ContextRouteImport.update({
   id: '/context',
   path: '/context',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContextCardDemoRoute = ContextCardDemoRouteImport.update({
+  id: '/context-card-demo',
+  path: '/context-card-demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceRoute = FinanceRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof AccountsRoute
   '/calendar': typeof CalendarRoute
   '/context': typeof ContextRoute
+  '/context-card-demo': typeof ContextCardDemoRoute
   '/finance': typeof FinanceRoute
   '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsRoute
   '/calendar': typeof CalendarRoute
   '/context': typeof ContextRoute
+  '/context-card-demo': typeof ContextCardDemoRoute
   '/finance': typeof FinanceRoute
   '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/accounts': typeof AccountsRoute
   '/calendar': typeof CalendarRoute
   '/context': typeof ContextRoute
+  '/context-card-demo': typeof ContextCardDemoRoute
   '/finance': typeof FinanceRoute
   '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/calendar'
     | '/context'
+    | '/context-card-demo'
     | '/finance'
     | '/goals'
     | '/login'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/calendar'
     | '/context'
+    | '/context-card-demo'
     | '/finance'
     | '/goals'
     | '/login'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/calendar'
     | '/context'
+    | '/context-card-demo'
     | '/finance'
     | '/goals'
     | '/login'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AccountsRoute: typeof AccountsRoute
   CalendarRoute: typeof CalendarRoute
   ContextRoute: typeof ContextRoute
+  ContextCardDemoRoute: typeof ContextCardDemoRoute
   FinanceRoute: typeof FinanceRoute
   GoalsRoute: typeof GoalsRoute
   LoginRoute: typeof LoginRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/context'
       fullPath: '/context'
       preLoaderRoute: typeof ContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/context-card-demo': {
+      id: '/context-card-demo'
+      path: '/context-card-demo'
+      fullPath: '/context-card-demo'
+      preLoaderRoute: typeof ContextCardDemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/finance': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsRoute: AccountsRoute,
   CalendarRoute: CalendarRoute,
   ContextRoute: ContextRoute,
+  ContextCardDemoRoute: ContextCardDemoRoute,
   FinanceRoute: FinanceRoute,
   GoalsRoute: GoalsRoute,
   LoginRoute: LoginRoute,

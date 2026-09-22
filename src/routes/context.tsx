@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CheckCircle2, Inbox, Search, X } from "lucide-react";
+import { CheckCircle2, Inbox, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ContextCard } from "@/components/context-card";
@@ -73,6 +73,15 @@ function ContextOverview() {
             ค้นหา กรอง และยืนยันบริบทที่เลขาเก็บไว้ — {counts.total} รายการ
           </p>
         </div>
+
+        {/* ลิงก์เข้า prototype Context Card */}
+        <Link
+          to="/context-card-demo"
+          className="flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-hero-accent/40 bg-hero-top/40 px-4 py-2.5 text-sm text-muted transition-colors hover:bg-hero-top/70"
+        >
+          <Sparkles className="size-4 text-hero-accent" />
+          ลอง Context Card prototype — จับ → การ์ด → ปัดแก้ → บริบท
+        </Link>
 
         {/* ช่องค้นหา */}
         <div className="relative">

@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  accumulateRecognitionText,
   initialSpeechState,
   speechErrorMessage,
   speechTransition,
@@ -100,6 +101,57 @@ describe("Speech state machine — สถานะไมโครโฟน", () 
     const next = speechTransition(state, { type: "RESET" });
 
     assert.deepEqual(next, initialSpeechState);
+  });
+});
+
+describe("accumulateRecognitionText — รวมผล interim/final ไม่ให้ซ้ำกันเอง", () => {
+  it("partial ตามด้วย final ของประโยคเดียวกัน → ได้ข้อความเดียว ไม่ซ้ำ", () => {
+    // รอบแรก: interim "นัดหมอสัปดาห์หน้า" (ยังไม่ final)
+    const first = accumulateRecognitionText("", [
+      { isFinal: false, text: "นัดหมอสัปดาห์หน้า" },
+    ]);
+    assert.deepEqual(first, { committed: "", draft: "นัดหมอสัปดาห์หน้า" });
+
+    // รอบสอง: engine ยืนยัน final ของสล็อตเดิม
+    const second = accumulateRecognitionText(first.committed, [
+      { isFinal: true, text: "นัดหมอสัปดาห์หน้า" },
+    ]);
+    assert.deepEqual(second, { committed: "นัดหมอสัปดาห์หน้า", draft: "" });
+  });
+
+  it("final ใหม่ต่อท้าย committed เดิมคั่นด้วยช่องว่าง", () => {
+    const once = accumulateRecognitionText("", [{ isFinal: true, text: "ประโยคแรก" }]);
+    const twice = accumulateRecognitionText(once.committed, [
+      { isFinal: true, text: "ประโยคที่สอง" },
+    ]);
+    assert.equal(twice.committed, "ประโยคแรก ประโยคที่สอง");
+  });
+
+  it("final กับ interim มาใน event เดียว → ทั้งคู่ถูกนับ คนละส่วนกัน", () => {
+    const result = accumulateRecognitionText("", [
+      { isFinal: true, text: "ส่วนที่จบแล้ว" },
+      { isFinal: false, text: "ส่วนที่กำลังพูด" },
+    ]);
+    assert.deepEqual(result, {
+      committed: "ส่วนที่จบแล้ว",
+      draft: "ส่วนที่กำลังพูด",
+    });
+  });
+
+  it("interim รอบใหม่แทนที่ draft เดิม (engine พิมพ์ทับเสมอ)", () => {
+    const first = accumulateRecognitionText("", [{ isFinal: false, text: "กำลัง" }]);
+    const second = accumulateRecognitionText(first.committed, [
+      { isFinal: false, text: "กำลังพูดต่อ" },
+    ]);
+    assert.deepEqual(second, { committed: "", draft: "กำลังพูดต่อ" });
+  });
+
+  it("ข้อความว่าง/ช่องว่างถูกข้าม — ไม่เกิดช่องว่างซ้ำซ้อน", () => {
+    const result = accumulateRecognitionText("ส่วนเดิม", [
+      { isFinal: false, text: "   " },
+      { isFinal: true, text: "ใหม่" },
+    ]);
+    assert.deepEqual(result, { committed: "ส่วนเดิม ใหม่", draft: "" });
   });
 });
 

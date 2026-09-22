@@ -80,6 +80,33 @@ export const SPEECH_STATUS_LABELS: Record<SpeechStatus, string> = {
   error: "เกิดข้อผิดพลาด",
 };
 
+/**
+ * รวมผลจาก onresult เข้ากับที่สะสมไว้ — pure function เพื่อให้ทดสอบได้ตรง ๆ
+ *
+ * กติกา:
+ * - ผล isFinal ยืนยันสิ่งที่เคย interim ของสล็อตเดียวกัน → ผนวกเข้า committed ครั้งเดียว
+ *   (partial "นัดหมอ" ตามด้วย final "นัดหมอ" ต้องได้ "นัดหมอ" ไม่ใช่ "นัดหมอ นัดหมอ")
+ * - interim ใหม่ของรอบนี้แทนที่ draft เดิม (engine พิมพ์ทับของเดิมเสมอ)
+ * - committed ที่ยืนยันแล้วไม่มีวันถูก interim แทนที่หรือทำให้ซ้ำ
+ */
+export function accumulateRecognitionText(
+  committed: string,
+  items: Array<{ isFinal: boolean; text: string }>,
+): { committed: string; draft: string } {
+  let nextCommitted = committed;
+  let nextDraft = "";
+  for (const item of items) {
+    const text = item.text.trim();
+    if (!text) continue;
+    if (item.isFinal) {
+      nextCommitted = nextCommitted ? `${nextCommitted} ${text}` : text;
+    } else {
+      nextDraft = nextDraft ? `${nextDraft} ${text}` : text;
+    }
+  }
+  return { committed: nextCommitted, draft: nextDraft };
+}
+
 /** แปลง error จาก Web Speech API เป็นข้อความที่ผู้ใช้อ่านรู้เรื่อง */
 export function speechErrorMessage(
   code: string | undefined,

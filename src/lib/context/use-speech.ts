@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
+  accumulateRecognitionText,
   initialSpeechState,
   speechErrorMessage,
   speechTransition,
@@ -71,7 +72,11 @@ export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** ค่าล่าสุดของ transcript ที่ฟังได้ (interim + final สะสม) */
+  /** ผล final ที่ยืนยันแล้วจาก engine — เพิ่มได้แต่ไม่ถูกแทนที่ด้วย interim */
+  const committedRef = useRef("");
+  /** ข้อความ interim ของรอบฟังปัจจุบัน (engine จะแทนที่/ยืนยันเป็น final ตามลำดับ) */
+  const draftRef = useRef("");
+  /** ค่าล่าสุดของ transcript ที่แสดง = committed + draft (ไม่ซ้ำกันเอง) */
   const interimRef = useRef("");
   /**
    * ผลตรวจ support แบบ lazy — ต้องคง false ระหว่าง SSR และเช็คจริงหลัง mount
@@ -141,6 +146,8 @@ export function useSpeechRecognition() {
     recognitionRef.current = null;
 
     clearTimers();
+    committedRef.current = "";
+    draftRef.current = "";
     interimRef.current = "";
     dispatch({ type: "START" });
 
@@ -151,35 +158,36 @@ export function useSpeechRecognition() {
       recognition.interimResults = true;
 
       recognition.onresult = (event) => {
-        let interim = "";
+        const items: Array<{ isFinal: boolean; text: string }> = [];
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
-          const text = result[0]?.transcript ?? "";
-          if (result.isFinal) {
-            interimRef.current = interimRef.current
-              ? `${interimRef.current} ${text}`.trim()
-              : text.trim();
-            // ผล final มาแล้วหลังกดหยุด — ปิดจบทันที (ไม่รอ fallback)
-            if (stopFallbackRef.current !== null) {
-              clearTimeout(stopFallbackRef.current);
-              stopFallbackRef.current = null;
-              dispatch({ type: "FINAL", transcript: interimRef.current.trim() });
-              return;
-            }
-            // ระหว่างฟัง: หน่วงนิดให้ผลเพิ่มเติมไหลมารวมก่อน
-            clearTimers();
-            finalizeTimerRef.current = setTimeout(() => {
-              finalizeTimerRef.current = null;
-              dispatch({ type: "FINAL", transcript: interimRef.current.trim() });
-            }, 120);
-          } else {
-            interim += text;
-          }
+          items.push({ isFinal: result.isFinal, text: result[0]?.transcript ?? "" });
         }
-        if (interim) {
-          interimRef.current = interimRef.current
-            ? `${interimRef.current} ${interim}`.trim()
-            : interim.trim();
+        // final ยืนยันสิ่งที่เคย interim ของสล็อตเดียวกัน — ผนวกเข้า committed
+        // ครั้งเดียว ไม่ใช่ต่อท้าย display เดิม (กัน partial + final ซ้ำกัน)
+        const accumulated = accumulateRecognitionText(committedRef.current, items);
+        committedRef.current = accumulated.committed;
+        draftRef.current = accumulated.draft;
+        interimRef.current = [committedRef.current, draftRef.current]
+          .filter(Boolean)
+          .join(" ");
+
+        // ผล final มาแล้วหลังกดหยุด — ปิดจบทันที (ไม่รอ fallback)
+        if (stopFallbackRef.current !== null) {
+          clearTimeout(stopFallbackRef.current);
+          stopFallbackRef.current = null;
+          dispatch({ type: "FINAL", transcript: interimRef.current });
+          return;
+        }
+        if (committedRef.current) {
+          // ระหว่างฟัง: หน่วงนิดให้ผลเพิ่มเติมไหลมารวมก่อน
+          clearTimers();
+          finalizeTimerRef.current = setTimeout(() => {
+            finalizeTimerRef.current = null;
+            dispatch({ type: "FINAL", transcript: interimRef.current });
+          }, 120);
+        }
+        if (draftRef.current) {
           dispatch({ type: "PARTIAL", transcript: interimRef.current });
         }
       };
