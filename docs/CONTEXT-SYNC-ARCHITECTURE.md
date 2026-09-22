@@ -1,7 +1,7 @@
 # Context Sync Architecture
 
 **Purpose:** เอกสารอ้างอิงสถาปัตยกรรมการซิงก์ Context ระหว่างอุปกรณ์ (local-first + Supabase) สำหรับพัฒนาต่อ / debug / ขยาย sync ไปยัง store อื่น
-**Status:** 🟢 IMPLEMENTED + VERIFIED (unit 99/99, E2E 19/19 บน dev และ production build — รวม outbox offline→online + realtime bridge; H1/H2 รอ apply publication 0004)
+**Status:** 🟢 IMPLEMENTED + VERIFIED (unit 193+104 ผ่าน, E2E 19/19 บน dev และ production build — รวม outbox offline→online + realtime bridge; H1/H2 รอ apply publication 0004) · Context Card prototype (/context-card-demo) ผูก store จริงและผ่าน QA 23/23 แล้ว — ดู §12
 **Companion docs:** `SECRETARY-ARCHITECTURE.md` (Context Domain Model — Appendix A)
 **Last Updated:** 22 September 2026
 
@@ -62,6 +62,12 @@ Context store ซิงก์ข้ามอุปกรณ์ด้วยหล
 | [src/lib/supabase/use-context-realtime.ts](../src/lib/supabase/use-context-realtime.ts) | Hook mount bridge — resubscribe ตาม session, unmount บน logout |
 | [src/lib/supabase/context-sync.test.ts](../src/lib/supabase/context-sync.test.ts) | Unit tests — mapper roundtrip, null-safety, LWW ทุกทิศ |
 | [scripts/context-sync-e2e.mjs](../scripts/context-sync-e2e.mjs) | E2E 12 ขั้น — login/push/pull/LWW/RLS (มี pre-migration resilience mode) |
+| [src/lib/context/use-speech.ts](../src/lib/context/use-speech.ts) | Hook ไมค์ (Web Speech) — รวมผล interim/final ผ่าน `accumulateRecognitionText` กัน transcript ซ้ำ |
+| [src/components/prototype/workflow-strip.tsx](../src/components/prototype/workflow-strip.tsx) | WorkflowStrip — แถบขั้นตอน อินพุต → การ์ด → ปัด/แก้ → บริบท |
+| [src/components/prototype/context-hero-card.tsx](../src/components/prototype/context-hero-card.tsx) | การ์ดพาสเทลของ prototype — viewer ของ Context (statement/evidence ล่าสุด/tags/related) |
+| [src/components/prototype/card-input-bar.tsx](../src/components/prototype/card-input-bar.tsx) | แถบอินพุต กล้อง/ไมค์/คีย์บอร์ด — บันทึกผ่าน `createContextFromNote` เดิม |
+| [src/routes/context-card-demo.tsx](../src/routes/context-card-demo.tsx) | Route demo 4 ขั้น — ผูก store จริงทุก mutation (แก้ = evidence ใหม่, ยืนยัน = lifecycle) |
+| [scripts/context-card-qa.mjs](../scripts/context-card-qa.mjs) | QA แบบเดินจริง 4 ขั้น + เสียง mock — 23 การตรวจ × dev/built |
 
 ---
 
@@ -325,7 +331,9 @@ flushOutbox(): replay FIFO ด้วย Supabase ตรง (ห้าม re-enqu
 | Unit | `src/lib/supabase/outbox.test.ts` | คิว 13 กรณี: dedupe latest-wins, FIFO, cap 500, persistence, removeFromOutbox, flush สำเร็จ/พัง/exception, budget 5 ครั้ง, head-of-line blocking |
 | E2E (outbox) | `scripts/context-sync-e2e.mjs` ส่วน G | ตัดเน็ตจริง (`setOffline`) → สร้างบริบทได้ → push พังลงคิว (queued=2: context+evidence) → คลาวด์ยังว่าง → กลับออนไลน์ → flush ขึ้นคลาวด์เอง → คิวว่าง |
 | E2E (realtime) | `scripts/context-sync-e2e.mjs` ส่วน H | อุปกรณ์หนึ่งสร้าง → อุปกรณ์สองเห็นการ์ดใหม่เองภายใน ~8 วิ **ไม่ reload**; PATCH `deleted_at` จากภายนอก → การ์ดหายเอง — **ต้อง apply 0004 + `E2E_EXPECT_REALTIME=1`** (ยังไม่ apply = SKIP) |
-| Full suite | `npm test` | 193/193 ผ่าน (รวม test ชุดเดิมทั้งหมด) |
+| Unit | `src/lib/context/speech.test.ts` | State machine ไมค์ + `accumulateRecognitionText`: partial→final ไม่ซ้ำ, final ต่อท้าย committed, final+interim ใน event เดียว, interim ทับ draft, ข้อความว่าง (18 กรณี) |
+| E2E (prototype) | `scripts/context-card-qa.mjs` | เดิน 4 ขั้นบน `/context-card-demo`: พิมพ์ → การ์ด → แก้+แท็ก → ยืนยัน + เสียง mock ครบ — 23/23 ทั้ง dev (8080) และ built (8081), console สะอาด, mobile ไม่ล้นจอ, Finance store ไม่ถูกแตะ |
+| Full suite | `npm test` | 297 ข้อผ่านทั้งหมด = scripts 193 (+2 skip ตรวจสภาพแวดล้อม) + src 104 |
 | E2E | `scripts/context-sync-e2e.mjs` | 17 ขั้น: login (session cookie ตาม format `@supabase/ssr` — chunk 3180 chars, `"base64-" + base64url`) → สร้างบริบทผ่าน UI → push จริง → reload persist → อุปกรณ์ที่สอง pull → ยืนยัน lifecycle → LWW merge กลับ → RLS 3 กรณี → outbox offline→online (ส่วน G) |
 | Gates | typecheck / build / smoke | ผ่านทั้ง dev และ built output (:8081) |
 
@@ -342,6 +350,7 @@ flushOutbox(): replay FIFO ด้วย Supabase ตรง (ห้าม re-enqu
 3. **`Set` หายตอน persist** (§6.4) → pattern-only flags รั่วทุก reload → แก้ด้วย `partialize` + `merge`
 4. **pushAllLocal ตายทั้งก้อนเมื่อตารางเดียวพัง** → แก้: แยกความพังรายตาราง + throw aggregate
 5. **pull พังถูกตีความเป็น "remote ว่าง"** (ชุดเดิมของ finance/goals) → เสี่ยง overwrite คลาวด์ตอน first-login → แก้: `pullAll` return `null` + caller bail
+6. **transcript ไมค์ซ้ำ (partial + final ทับกัน)** — hook เดิมสะสมทุก `onresult` ต่อท้าย display เดียว ทำให้ interim "นัดหมอสัปดาห์หน้า" ตามด้วย final "นัดหมอสัปดาห์หน้าค่ะ" กลายเป็นข้อความซ้ำบนบันทึก (กระทบทั้ง ContextInput และ prototype) → แก้ที่ราก: แยก `committedRef` (final ยืนยันแล้ว) ออกจาก `draftRef` (interim รอบปัจจุบัน) ผ่าน pure function `accumulateRecognitionText` ใน speech.ts — ทดสอบ 5 กรณี + QA จริงทั้งสองหน้า ยืนยันข้อความเดียวไม่ซ้ำ
 
 ---
 
@@ -358,7 +367,24 @@ flushOutbox(): replay FIFO ด้วย Supabase ตรง (ห้าม re-enqu
 
 ---
 
-# 12. Cheat Sheet — ทำงานกับระบบนี้
+# 12. Context Card Prototype — UI ตัวอย่างที่ผูก store จริง
+
+`/context-card-demo` ตาม `Context Card UX&UI Guide.png` — **ไม่ใช่ mock แยก** แต่เป็น viewer อีกชั้นของ Context ตามหลัก "UI is a viewer, not the model":
+
+| ขั้น (WorkflowStrip) | สิ่งที่เกิดจริงใน domain |
+|---|---|
+| อินพุต (กล้อง/ไมค์/คีย์บอร์ด) | ไมค์+คีย์บอร์ดใช้เส้นทางเดียวกับ production: `createContextFromNote` → evidence immutable + `markPatternOnly` (กล้องยังเป็น placeholder toast) |
+| การ์ด | `ContextHeroCard` แสดง statement จาก Fact ถ้ามี ไม่งั้นข้อความ evidence **ล่าสุด** (ฉบับแก้มาทีหลังอยู่ท้าย) + tags + related เป็นแถบใบเสร็จ |
+| ปัด / แก้ | แก้ข้อความ = `addEvidence` ฉบับใหม่ (ของเดิมไม่ถูกลบ — immutable), แท็ก = `addTag`, ผูกบริบท = `addRelatedContext` |
+| บริบท | `transitionLifecycle(id, "confirmed")` จริง — และทุก mutation ไหลเข้า sync/outbox/realtime ตามระบบนี้โดยอัตโนมัติ |
+
+Design tokens เฉพาะของการ์ด (`--color-hero-*`, `--font-hand` Mali) อยู่ใน `styles.css` แบบแยกหมวด — ไม่ปนชุดหลัก
+
+QA: `node scripts/context-card-qa.mjs [url] [outBase]` เดินจริงทั้งพิมพ์และเสียง (Web Speech mock แบบเดียวกับ context-qa) — ใช้เป็น regression ของ prototype ได้ทันที
+
+---
+
+# 13. Cheat Sheet — ทำงานกับระบบนี้
 
 **เพิ่มฟิลด์ใหม่ใน Context:**
 1. `src/lib/context/types.ts` → เพิ่มใน type
