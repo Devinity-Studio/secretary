@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AuthProvider } from "@/lib/auth/provider";
 import { useSyncOnLogin } from "@/lib/supabase/use-sync-on-login";
+import { useContextRealtime } from "@/lib/supabase/use-context-realtime";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "คุณเลขา";
@@ -41,6 +42,7 @@ export const Route = createRootRoute({
 
 function Root() {
   useSyncOnLogin();
+  useContextRealtime();
   return (
     <html lang="th" suppressHydrationWarning>
       <head>

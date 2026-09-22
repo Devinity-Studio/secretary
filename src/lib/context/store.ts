@@ -16,6 +16,12 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { createId } from "../utils.ts";
+import {
+  pushContext as syncPushContext,
+  pushContextEvidence as syncPushContextEvidence,
+  deleteContext as syncDeleteContext,
+} from "@/lib/supabase/sync";
+import { notifyPushFailure } from "@/lib/supabase/sync-status";
 import type {
   SecretaryContext,
   CreateContextInput,
@@ -41,6 +47,39 @@ import {
   canTransitionLifecycle,
   LIFECYCLE_STATUS_LABELS,
 } from "./types";
+
+// ════════════════════════════════════════════════════════════════════════════════
+// SYNC BRIDGE — local-first with background Supabase push
+// ════════════════════════════════════════════════════════════════════════════════
+//
+// The store stays local-first: every mutation commits to local state
+// synchronously (persist → localStorage), reads stay instant/offline-safe,
+// and Supabase is the durable backup. Mirrors the wiring in the Finance,
+// Goals and Calendar stores.
+//
+// Supabase push failures are surfaced via a throttled toast; the row is not
+// lost — the next mutation of the same row retries the push.
+
+/** Fire-and-forget push of a context row (with its evidence) to Supabase. */
+function pushContextToCloud(context: SecretaryContext, evidenceMap: Record<string, Evidence>): void {
+  syncPushContext(context).catch((err) => notifyPushFailure(err));
+  for (const eid of context.evidenceIds) {
+    const ev = evidenceMap[eid];
+    if (ev) {
+      syncPushContextEvidence(ev).catch((err) => notifyPushFailure(err));
+    }
+  }
+}
+
+/** Fire-and-forget push of a context row only (evidence already pushed). */
+function pushContextRowToCloud(context: SecretaryContext): void {
+  syncPushContext(context).catch((err) => notifyPushFailure(err));
+}
+
+/** Fire-and-forget soft delete of a context row in Supabase. */
+function deleteContextFromCloud(contextId: string): void {
+  syncDeleteContext(contextId).catch((err) => notifyPushFailure(err));
+}
 
 const memoryStorage: Storage = {
   getItem: () => null,
@@ -177,6 +216,30 @@ interface ContextState {
   /** Replace all data (for Supabase sync) */
   replaceAll: (contexts: SecretaryContext[], evidence: Evidence[]) => void;
 
+  /**
+   * Replace state from a cloud merge without wiping pattern-only flags.
+   * Unlike replaceAll (fresh-hydrate semantics), sync preserves the
+   * Judgment Boundary markers for contexts that survived the merge.
+   */
+  replaceAllFromSync: (
+    contexts: SecretaryContext[],
+    evidence: Evidence[],
+    keepPatternOnlyIds: Iterable<string> | null | undefined,
+  ) => void;
+
+  /**
+   * Apply ONE context row pushed live from Supabase Realtime.
+   * LWW on updatedAt; remote-only rows are inserted; soft-delete broadcasts
+   * remove the local copy. Our own push echoes never regress local state.
+   */
+  applyRemoteContext: (context: SecretaryContext) => void;
+
+  /**
+   * Apply ONE evidence row pushed live from Supabase Realtime.
+   * Evidence is immutable — first write wins, echoes are no-ops.
+   */
+  applyRemoteEvidence: (evidence: Evidence) => void;
+
   /** บันทึก context ID ว่าเป็น pattern-only (ไม่มี judgment) */
   markPatternOnly: (contextId: string) => void;
 
@@ -229,6 +292,7 @@ export const useContextStore = create<ContextState>()(
           id: contextId,
           type: input.type ?? "unknown",
           lifecycle: input.lifecycle ?? "tentative",
+          deletedAt: null,
           evidenceIds: [evidenceId],
           facts: [],
           inferences: [],
@@ -252,6 +316,8 @@ export const useContextStore = create<ContextState>()(
           contexts: { ...s.contexts, [contextId]: context },
           evidence: { ...s.evidence, [evidenceId]: evidence },
         }));
+
+        pushContextToCloud(context, get().evidence);
 
         return context;
       },
@@ -288,6 +354,8 @@ export const useContextStore = create<ContextState>()(
             },
           };
         });
+
+        pushContextRowToCloud(get().contexts[id]!);
       },
 
       deleteContext: (id) => {
@@ -305,6 +373,8 @@ export const useContextStore = create<ContextState>()(
             evidence: newEvidence,
           };
         });
+
+        deleteContextFromCloud(id);
       },
 
       // ── Lifecycle ──────────────────────────────────────────────────────────
@@ -339,6 +409,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[id]!);
 
         return true;
       },
@@ -382,6 +454,8 @@ export const useContextStore = create<ContextState>()(
           },
           evidence: { ...s.evidence, [evidenceId]: evidence },
         }));
+
+        pushContextToCloud(get().contexts[contextId]!, get().evidence);
       },
 
       getEvidence: (id) => get().evidence[id],
@@ -440,6 +514,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       removeFact: (contextId, factId) => {
@@ -456,6 +532,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       // ── Inferences ────────────────────────────────────────────────────────
@@ -503,6 +581,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       confirmInference: (contextId, inferenceId) => {
@@ -560,6 +640,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       rejectInference: (contextId, inferenceId) => {
@@ -592,6 +674,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       // ── Entity Links ──────────────────────────────────────────────────────
@@ -639,6 +723,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       removeLink: (contextId, linkId) => {
@@ -672,6 +758,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       // ── Related Contexts ──────────────────────────────────────────────────
@@ -715,6 +803,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       removeRelatedContext: (contextId, relatedContextId) => {
@@ -733,6 +823,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       // ── Enrichment ────────────────────────────────────────────────────────
@@ -764,6 +856,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       setPriority: (contextId, priority) => {
@@ -780,6 +874,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       addTag: (contextId, tag) => {
@@ -796,6 +892,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       removeTag: (contextId, tag) => {
@@ -812,6 +910,8 @@ export const useContextStore = create<ContextState>()(
             },
           },
         }));
+
+        pushContextRowToCloud(get().contexts[contextId]!);
       },
 
       // ── History ────────────────────────────────────────────────────────────
@@ -898,10 +998,65 @@ export const useContextStore = create<ContextState>()(
         });
       },
 
+      /** Replace state from a cloud merge WITHOUT wiping pattern-only flags. */
+      replaceAllFromSync: (contexts, evidence, keepPatternOnlyIds) => {
+        const contextMap: Record<string, SecretaryContext> = {};
+        const evidenceMap: Record<string, Evidence> = {};
+
+        contexts.forEach((c) => {
+          contextMap[c.id] = c;
+        });
+
+        evidence.forEach((e) => {
+          evidenceMap[e.id] = e;
+        });
+
+        // Defensive: a non-Set (e.g. a pre-fix persisted {}) must not throw.
+        const keepIds = Array.from(
+          (keepPatternOnlyIds as Iterable<string> | null | undefined) ?? [],
+        );
+        const preserved = new Set<string>();
+        for (const id of keepIds) {
+          if (contextMap[id]) preserved.add(id);
+        }
+
+        set({
+          contexts: contextMap,
+          evidence: evidenceMap,
+          patternOnlyContextIds: preserved,
+        });
+      },
+
       // ── Retrieval support ──────────────────────────────────────────────────
 
       getAllEvidence: () => {
         return { ...get().evidence };
+      },
+
+      // ── Realtime apply (Supabase Realtime → store) ─────────────────────────
+
+      applyRemoteContext: (context) => {
+        const current = get().contexts[context.id];
+        // Soft delete broadcast: remove the local copy.
+        if (context.deletedAt) {
+          if (!current) return;
+          const contexts = { ...get().contexts };
+          delete contexts[context.id];
+          set({ contexts });
+          return;
+        }
+        // Last-write-wins: an older remote copy (or our own push echo — a
+        // delivered broadcast round-trips through the server) must not
+        // overwrite the newer local state.
+        if (current && current.updatedAt >= context.updatedAt) return;
+        set((s) => ({ contexts: { ...s.contexts, [context.id]: context } }));
+      },
+
+      applyRemoteEvidence: (evidence) => {
+        // Immutable rows: only fill gaps — never overwrite what we already
+        // have (covers duplicate broadcasts and our own push echoes).
+        if (get().evidence[evidence.id]) return;
+        set((s) => ({ evidence: { ...s.evidence, [evidence.id]: evidence } }));
       },
     }),
     {
@@ -909,6 +1064,25 @@ export const useContextStore = create<ContextState>()(
       storage: createJSONStorage(() =>
         typeof window === "undefined" ? memoryStorage : localStorage,
       ),
+      // Set ไม่รอดจาก JSON.stringify (กลายเป็น {}) — เก็บเป็น array ตอน persist
+      // แล้วแปลงกลับเป็น Set ตอน rehydrate มิฉะนั้น pattern-only flags หายทุก reload
+      partialize: (state) =>
+        ({
+          ...state,
+          patternOnlyContextIds: Array.from(state.patternOnlyContextIds ?? []),
+        }) as unknown as ContextState,
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<ContextState>;
+        return {
+          ...current,
+          ...p,
+          patternOnlyContextIds: new Set(
+            Array.from(
+              (p.patternOnlyContextIds as Iterable<string> | null | undefined) ?? [],
+            ),
+          ),
+        };
+      },
     },
   ),
 );

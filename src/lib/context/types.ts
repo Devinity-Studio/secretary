@@ -544,6 +544,12 @@ export interface SecretaryContext {
    * All parties share the same canonical Context ID
    */
   canonicalId: string | null;
+
+  /**
+   * Soft-delete marker, set by sync/realtime only (client domain never sets it).
+   * A broadcast carrying deletedAt tells every device to drop the local copy.
+   */
+  deletedAt: string | null;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════

@@ -173,6 +173,7 @@ function createTestStore() {
             archived: false,
             sharedWithUserIds: null,
             canonicalId: null,
+            deletedAt: null,
           };
 
           set((s) => ({

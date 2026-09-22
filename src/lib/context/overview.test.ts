@@ -35,6 +35,7 @@ function makeContext(overrides: Partial<SecretaryContext> = {}): SecretaryContex
     archived: false,
     sharedWithUserIds: null,
     canonicalId: null,
+    deletedAt: null,
     ...overrides,
   };
 }

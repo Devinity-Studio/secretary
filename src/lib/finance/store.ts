@@ -13,8 +13,10 @@ import { notifyPushFailure } from "@/lib/supabase/sync-status";
 
 function seedAccounts(): Account[] {
   const now = new Date().toISOString();
-  return DEFAULT_ACCOUNTS.map((a, i) => ({
-    id: `acc-default-${i}-${a.type}`,
+  return DEFAULT_ACCOUNTS.map((a) => ({
+    // UUID — the accounts table (and account_id FKs) require real uuids, so a
+    // non-UUID seed id made every first-login push fail with 22P02 (invalid uuid).
+    id: createId(),
     name: a.name,
     type: a.type,
     currentBalance: 0,
