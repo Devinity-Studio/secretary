@@ -1,7 +1,20 @@
 # Context Sync Architecture
 
 **Purpose:** เอกสารอ้างอิงสถาปัตยกรรมการซิงก์ Context ระหว่างอุปกรณ์ (local-first + Supabase) สำหรับพัฒนาต่อ / debug / ขยาย sync ไปยัง store อื่น
-**Status:** 🟢 IMPLEMENTED + VERIFIED (unit 193+104 ผ่าน, E2E 19/19 บน dev และ production build — รวม outbox offline→online + realtime bridge; H1/H2 รอ apply publication 0004) · Context Card prototype (/context-card-demo) ผูก store จริงและผ่าน QA 23/23 แล้ว — ดู §12
+**Status:** 🟢 IMPLEMENTED + VERIFIED (unit 203+104 ผ่าน รวม migration-idempotency 4 ข้อบน PGLite, E2E 21/21 บน dev รวม H1/H2 realtime ข้ามอุปกรณ์ด้วย event จริง + outbox offline→online) · Context Card prototype (/context-card-demo) ผูก store จริงและผ่าน QA 23/23 แล้ว — ดู §12 · Realtime publication เปิดแล้วบน cloud 24 Sep 2026 (runbook ด้านล่าง)
+
+**Runbook การเปิด realtime publication (24 Sep 2026 — ใช้แล้วสำเร็จ):** เครื่อง dev ไม่มีสิทธิ์ DDL บน Supabase (มีแค่ anon/service key ผ่าน PostgREST) และ cloud ไม่มีตาราง `_migrations` (ชุดก่อน apply มือทั้งหมด)
+
+⚠️ **บทเรียนจากของจริง:** การรัน `migrations/0004_realtime_contexts.sql` ผ่าน **SQL Editor ไม่สำเร็จแบบเงียบ ๆ** — publication `supabase_realtime` เป็นของ role ภายในของ Supabase ผู้ใช้ SQL Editor ทั่วไปเจอ `must be owner of publication` และ DO block ของไฟล์จับไม่ได้ (จับแค่ duplicate/undefined) → **"Run succeeded" ≠ membership เปลี่ยน** — ห้ามเชื่อปุ่ม Run ต้องพิสูจน์ด้วย oracle เสมอ
+
+**ทางที่ใช้ได้จริง:** Dashboard → **Database → Replication → tab "Supabase Realtime"** → เปิด toggle `public.contexts` + `public.context_evidence` → Save (UI รันด้วยสิทธิ์ admin ข้ามปัญหา ownership)
+
+**วิธี verify (ทำเสมอหลังเปลี่ยน publication):**
+1. **Oracle (read-only):** join postgres_changes ผ่าน WSS ทั้งสองตาราง — ถ้าไม่อยู่ใน publication server จะส่ง system error `Unable to subscribe to changes...` กลับมา (วิธีนี้ใช้ได้แม้ไม่มีสิทธิ์อ่าน catalog)
+2. **Probe event จริง:** insert แถว probe → รอ INSERT/DELETE event → ลบทิ้ง
+3. **E2E เต็ม:** `E2E_EXPECT_REALTIME=1 node scripts/context-sync-e2e.mjs` — H1/H2 ต้อง PASS + A–G ไม่ถดถอย
+
+ห้าม `drop publication` เด็ดขาด — Supabase ใช้ publication เดียวกันกับ realtime ของทุกตารางในโปรเจกต์
 **Companion docs:** `SECRETARY-ARCHITECTURE.md` (Context Domain Model — Appendix A)
 **Last Updated:** 22 September 2026
 
@@ -333,7 +346,8 @@ flushOutbox(): replay FIFO ด้วย Supabase ตรง (ห้าม re-enqu
 | E2E (realtime) | `scripts/context-sync-e2e.mjs` ส่วน H | อุปกรณ์หนึ่งสร้าง → อุปกรณ์สองเห็นการ์ดใหม่เองภายใน ~8 วิ **ไม่ reload**; PATCH `deleted_at` จากภายนอก → การ์ดหายเอง — **ต้อง apply 0004 + `E2E_EXPECT_REALTIME=1`** (ยังไม่ apply = SKIP) |
 | Unit | `src/lib/context/speech.test.ts` | State machine ไมค์ + `accumulateRecognitionText`: partial→final ไม่ซ้ำ, final ต่อท้าย committed, final+interim ใน event เดียว, interim ทับ draft, ข้อความว่าง (18 กรณี) |
 | E2E (prototype) | `scripts/context-card-qa.mjs` | เดิน 4 ขั้นบน `/context-card-demo`: พิมพ์ → การ์ด → แก้+แท็ก → ยืนยัน + เสียง mock ครบ — 23/23 ทั้ง dev (8080) และ built (8081), console สะอาด, mobile ไม่ล้นจอ, Finance store ไม่ถูกแตะ |
-| Full suite | `npm test` | 297 ข้อผ่านทั้งหมด = scripts 193 (+2 skip ตรวจสภาพแวดล้อม) + src 104 |
+| Full suite | `npm test` | 301 ข้อผ่านทั้งหมด = scripts 197 (+2 skip ตรวจสภาพแวดล้อม) + src 104 |
+| Unit (migration) | `scripts/migrations-idempotency.test.mjs` | ทุก migration apply + รันซ้ำได้บน Postgres จริง (PGLite), 0004 additive เสมอ (สมาชิกเดิมของ publication รอด), RLS 7 ตาราง / 28 policies / 4 triggers ครบ — กัน deploy พังเมื่อ cloud ไม่มี `_migrations` |
 | E2E | `scripts/context-sync-e2e.mjs` | 17 ขั้น: login (session cookie ตาม format `@supabase/ssr` — chunk 3180 chars, `"base64-" + base64url`) → สร้างบริบทผ่าน UI → push จริง → reload persist → อุปกรณ์ที่สอง pull → ยืนยัน lifecycle → LWW merge กลับ → RLS 3 กรณี → outbox offline→online (ส่วน G) |
 | Gates | typecheck / build / smoke | ผ่านทั้ง dev และ built output (:8081) |
 

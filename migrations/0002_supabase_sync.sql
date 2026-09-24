@@ -100,10 +100,18 @@ create table if not exists public.calendar_events (
 
 create index if not exists calendar_events_user_idx on public.calendar_events(user_id, date) where deleted_at is null;
 
--- ============================================================
--- ROW LEVEL SECURITY
+--
+-- Conventions:
+--   - `create table` / `create index` use `if not exists` — re-runnable as-is.
+--   - Policies and triggers are NOT idempotent in Postgres, so each one is
+--     preceded by `drop ... if exists`. This file may run on a database where
+--     the tables were created by hand (no `_migrations` record), and the
+--     deploy-time migrator must not die on the first re-run.
 -- ============================================================
 -- Every table: users can only read/write their own rows.
+
+-- ⚠️ Policies/triggers below are re-created with drop-if-exists — see the
+-- conventions note at the top of this file.
 
 alter table public.accounts enable row level security;
 alter table public.transactions enable row level security;
@@ -112,86 +120,106 @@ alter table public.contributions enable row level security;
 alter table public.calendar_events enable row level security;
 
 -- Accounts
+drop policy if exists "Users can view own accounts" on public.accounts;
 create policy "Users can view own accounts"
   on public.accounts for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own accounts" on public.accounts;
 create policy "Users can insert own accounts"
   on public.accounts for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own accounts" on public.accounts;
 create policy "Users can update own accounts"
   on public.accounts for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own accounts" on public.accounts;
 create policy "Users can delete own accounts"
   on public.accounts for delete
   using (auth.uid() = user_id);
 
 -- Transactions
+drop policy if exists "Users can view own transactions" on public.transactions;
 create policy "Users can view own transactions"
   on public.transactions for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own transactions" on public.transactions;
 create policy "Users can insert own transactions"
   on public.transactions for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own transactions" on public.transactions;
 create policy "Users can update own transactions"
   on public.transactions for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own transactions" on public.transactions;
 create policy "Users can delete own transactions"
   on public.transactions for delete
   using (auth.uid() = user_id);
 
 -- Goals
+drop policy if exists "Users can view own goals" on public.goals;
 create policy "Users can view own goals"
   on public.goals for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own goals" on public.goals;
 create policy "Users can insert own goals"
   on public.goals for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own goals" on public.goals;
 create policy "Users can update own goals"
   on public.goals for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own goals" on public.goals;
 create policy "Users can delete own goals"
   on public.goals for delete
   using (auth.uid() = user_id);
 
 -- Contributions
+drop policy if exists "Users can view own contributions" on public.contributions;
 create policy "Users can view own contributions"
   on public.contributions for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own contributions" on public.contributions;
 create policy "Users can insert own contributions"
   on public.contributions for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own contributions" on public.contributions;
 create policy "Users can update own contributions"
   on public.contributions for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own contributions" on public.contributions;
 create policy "Users can delete own contributions"
   on public.contributions for delete
   using (auth.uid() = user_id);
 
 -- Calendar Events
+drop policy if exists "Users can view own calendar_events" on public.calendar_events;
 create policy "Users can view own calendar_events"
   on public.calendar_events for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own calendar_events" on public.calendar_events;
 create policy "Users can insert own calendar_events"
   on public.calendar_events for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own calendar_events" on public.calendar_events;
 create policy "Users can update own calendar_events"
   on public.calendar_events for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own calendar_events" on public.calendar_events;
 create policy "Users can delete own calendar_events"
   on public.calendar_events for delete
   using (auth.uid() = user_id);
@@ -209,14 +237,19 @@ begin
 end;
 $$ language plpgsql;
 
+-- ⚠️ `create trigger` has no `if not exists` — drop first (re-runnable).
+drop trigger if exists set_updated_at on public.accounts;
 create trigger set_updated_at before update on public.accounts
   for each row execute function public.handle_updated_at();
 
+drop trigger if exists set_updated_at on public.transactions;
 create trigger set_updated_at before update on public.transactions
   for each row execute function public.handle_updated_at();
 
+drop trigger if exists set_updated_at on public.goals;
 create trigger set_updated_at before update on public.goals
   for each row execute function public.handle_updated_at();
 
+drop trigger if exists set_updated_at on public.calendar_events;
 create trigger set_updated_at before update on public.calendar_events
   for each row execute function public.handle_updated_at();

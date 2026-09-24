@@ -9,12 +9,32 @@
 -- RLS ยังครอบคลุมทุก event เหมือนเดิม: Postgres Realtime ส่ง event ให้
 -- session ใดก็ตามที่ RLS อนุญาต (เจ้าของแถวเท่านั้น) — ไม่มีข้อมูลข้าม user
 --
--- Idempotent: รันซ้ำได้ปลอดภัย (drop publication if exists ก่อนสร้างใหม่)
+-- ⚠️ ห้ามใช้ `drop publication` กับ Supabase โดยเด็ดขาด:
+--   publication `supabase_realtime` เป็นของ Supabase Realtime และบนโปรเจกต์จริง
+--   อาจมีตารางอื่น (ชุด 0002 เดิม, ตารางของระบบ auth/storage) เป็นสมาชิกอยู่แล้ว
+--   drop แล้ว create ใหม่จะลบสมาชิกทั้งหมดหาย — realtime ของทุกตารางอื่นจะพังเงียบ ๆ
+--   ใช้ `alter publication ... add table` แบบ additive เท่านั้น
+--
+-- Idempotent: รันซ้ำได้ปลอดภัย — ถ้าตารางอยู่ใน publication แล้ว
+-- DO block จะข้าม (duplicate_object) และไม่ fail
 -- ============================================================
 
-drop publication if exists supabase_realtime;
+do $$
+begin
+  alter publication supabase_realtime add table public.contexts;
+exception
+  when duplicate_object then null; -- อยู่ใน publication แล้ว — ok
+  when undefined_object then
+    -- publication ยังไม่มี (โปรเจกต์ Supabase ปกติมีตั้งแต่ provision) — สร้างให้
+    create publication supabase_realtime;
+    alter publication supabase_realtime add table public.contexts;
+end
+$$;
 
-create publication supabase_realtime;
-
-alter publication supabase_realtime add table contexts;
-alter publication supabase_realtime add table context_evidence;
+do $$
+begin
+  alter publication supabase_realtime add table public.context_evidence;
+exception
+  when duplicate_object then null; -- อยู่ใน publication แล้ว — ok
+end
+$$;
