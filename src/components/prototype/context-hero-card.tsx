@@ -2,6 +2,7 @@ import { Paperclip } from "lucide-react";
 import type { Evidence, SecretaryContext } from "@/lib/context/types";
 import { SOURCE_TYPE_LABELS } from "@/lib/context/types";
 import { buildContextCardModel } from "@/lib/context/presentation";
+import { evidenceImageData } from "@/components/context-card";
 import { cn } from "@/lib/utils";
 
 /** สีคลิปหนีบกระดาษของแต่ละ chip (วนตามลำดับ — แค่การตกแต่ง) */
@@ -41,6 +42,19 @@ export function ContextHeroCard({
     model.statement?.text ??
     model.evidence[model.evidence.length - 1]?.preview ??
     "ยังไม่มีข้อความในบริบทนี้";
+
+  // รูปแนบ (ใบเสร็จจากกล้อง) ถ้ามี — แสดงเป็นพื้นหลังข้อความ
+  const receiptImage = model.evidence.length > 0
+    ? (() => {
+        for (let i = model.evidence.length - 1; i >= 0; i--) {
+          const ev = evidenceById[model.evidence[i].id];
+          if (!ev) continue;
+          const img = evidenceImageData(ev);
+          if (img) return img;
+        }
+        return null;
+      })()
+    : null;
 
   const related = model.relatedContexts.slice(0, 4);
   const captureTime = new Date(model.createdAt).toLocaleTimeString("th-TH", {
@@ -87,9 +101,17 @@ export function ContextHeroCard({
         </span>
       </div>
 
-      {/* เนื้อหาหลัก: ข้อความที่จับได้ */}
+      {/* เนื้อหาหลัก: ข้อความที่จับได้ (หรือรูปใบเสร็จเป็นหลัก) */}
       <div className="px-6 pb-6 pt-10 text-center">
-        <p className="font-hand text-4xl font-semibold leading-snug text-hero-ink md:text-5xl">
+        {receiptImage ? (
+          <img
+            src={receiptImage}
+            alt="ใบเสร็จที่แนบไว้"
+            className="mx-auto max-h-48 w-4/5 rounded-lg object-cover shadow-md"
+            loading="lazy"
+          />
+        ) : null}
+        <p className={cn("font-hand font-semibold leading-snug text-hero-ink", receiptImage ? "mt-3 text-2xl md:text-3xl" : "text-4xl md:text-5xl")}>
           {primaryText}
         </p>
         {model.statement ? (

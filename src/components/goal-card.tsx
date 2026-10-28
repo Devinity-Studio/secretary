@@ -1,29 +1,44 @@
 import { Check, MoreHorizontal, Pencil, Target, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { DetailToggle } from "@/components/detail-panel";
+import { GoalStatement } from "@/components/goal-statement";
+import { formatThaiDate } from "@/lib/finance/period";
 import { GOAL_TYPE_LABEL, goalStatusText, useGoalStore } from "@/lib/goals/store";
-import type { Goal } from "@/lib/goals/types";
+import { buildGoalStatement } from "@/lib/goals/statement";
+import type { Contribution, Goal } from "@/lib/goals/types";
 import { cn, formatBaht } from "@/lib/utils";
 
 export function GoalCard({
   goal,
   onEdit,
   onContribute,
+  onEditEntry,
 }: {
   goal: Goal;
   onEdit: (g: Goal) => void;
   onContribute: (g: Goal) => void;
+  onEditEntry?: (c: Contribution) => void;
 }) {
   const { current, percent, daysElapsed, daysTotal, daysLeft } = useGoalStore(
     useShallow((s) => s.goalProgress(goal.id)),
   );
+  const contributions = useGoalStore((s) => s.contributions);
   const completeGoal = useGoalStore((s) => s.completeGoal);
   const deleteGoal = useGoalStore((s) => s.deleteGoal);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const statement = useMemo(
+    () => buildGoalStatement(goal, contributions),
+    [goal, contributions],
+  );
 
   const isSavings = goal.type === "savings";
   const isComplete = goal.status === "completed";
   const isExpired = goal.status === "expired";
+  const detailId = `goal-detail-${goal.id}`;
+  const lastEntryLabel = statement.lastEntryDate ? formatThaiDate(statement.lastEntryDate) : null;
 
   return (
     <div
@@ -108,7 +123,7 @@ export function GoalCard({
           </p>
           <p className="tabular text-sm font-medium text-accent">{Math.round(percent)}%</p>
         </div>
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-surface-2">
+        <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-surface-2">
           <div
             className={cn(
               "h-full rounded-full transition-all duration-500",
@@ -116,6 +131,13 @@ export function GoalCard({
             )}
             style={{ width: `${Math.min(100, percent)}%` }}
           />
+          {detailOpen && (
+            <div
+              className="absolute inset-y-0 w-0.5 bg-foreground/50"
+              style={{ left: `${Math.min(100, statement.expectedPercent)}%` }}
+              title="ตำแหน่งที่ควรทำได้ตามแผน"
+            />
+          )}
         </div>
       </div>
 
@@ -133,6 +155,25 @@ export function GoalCard({
                 ? `เหลือ ${daysLeft} วัน`
                 : "วันสุดท้าย"}
         </span>
+      </div>
+
+      {/* Detail toggle */}
+      <DetailToggle
+        open={detailOpen}
+        onToggle={() => setDetailOpen(!detailOpen)}
+        controlsId={detailId}
+        hint={
+          statement.count > 0 && lastEntryLabel
+            ? `${statement.count} รายการ · ล่าสุด ${lastEntryLabel}`
+            : "ยังไม่มีรายการ"
+        }
+      />
+
+      {/* Expanded statement */}
+      <div id={detailId}>
+        {detailOpen && (
+          <GoalStatement goal={goal} statement={statement} onEditEntry={onEditEntry} />
+        )}
       </div>
 
       {/* Contribute button */}

@@ -8,7 +8,7 @@ import { GoalCard } from "@/components/goal-card";
 import { GoalForm } from "@/components/goal-form";
 import { Modal } from "@/components/modal";
 import { useGoalStore } from "@/lib/goals/store";
-import type { Goal } from "@/lib/goals/types";
+import type { Contribution, Goal } from "@/lib/goals/types";
 
 export const Route = createFileRoute("/goals")({ component: GoalsPage });
 
@@ -17,6 +17,7 @@ function GoalsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contribGoal, setContribGoal] = useState<Goal | null>(null);
+  const [editingEntry, setEditingEntry] = useState<{ entry: Contribution; goal: Goal } | null>(null);
 
   const activeGoals = goals.filter((g) => g.status === "active");
   const doneGoals = goals.filter((g) => g.status === "completed" || g.status === "expired" || g.status === "cancelled");
@@ -48,6 +49,7 @@ function GoalsPage() {
                 goal={g}
                 onEdit={(goal) => { setEditing(goal); setFormOpen(true); }}
                 onContribute={(goal) => setContribGoal(goal)}
+                onEditEntry={(entry) => setEditingEntry({ entry, goal: g })}
               />
             ))}
           </div>
@@ -63,6 +65,7 @@ function GoalsPage() {
                 goal={g}
                 onEdit={(goal) => { setEditing(goal); setFormOpen(true); }}
                 onContribute={() => {}}
+                onEditEntry={(entry) => setEditingEntry({ entry, goal: g })}
               />
             ))}
           </div>
@@ -97,16 +100,23 @@ function GoalsPage() {
         />
       </Modal>
 
-      {/* Contribution modal */}
+      {/* Contribution modal — เพิ่มหรือแก้ไขรายการย้อนหลัง */}
       <Modal
-        title="เพิ่มยอด"
-        open={!!contribGoal}
-        onClose={() => setContribGoal(null)}
+        title={editingEntry ? "แก้ไขรายการ" : "เพิ่มยอด"}
+        open={!!contribGoal || !!editingEntry}
+        onClose={() => { setContribGoal(null); setEditingEntry(null); }}
       >
-        {contribGoal && (
+        {contribGoal && !editingEntry && (
           <ContributionForm
             goal={contribGoal}
             onClose={() => setContribGoal(null)}
+          />
+        )}
+        {editingEntry && (
+          <ContributionForm
+            goal={editingEntry.goal}
+            initial={editingEntry.entry}
+            onClose={() => setEditingEntry(null)}
           />
         )}
       </Modal>

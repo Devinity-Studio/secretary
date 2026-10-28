@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { createId, todayISO } from "@/lib/utils";
+import { goalDayCounts } from "./statement";
 import type { Contribution, Goal, GoalStatus, GoalType } from "./types";
+import { createId, todayISO } from "@/lib/utils";
 import {
   pushGoal as syncPushGoal,
   deleteGoal as syncDeleteGoal,
@@ -152,13 +153,7 @@ export const useGoalStore = create<GoalState>()(
 
         const percent = goal.targetAmount > 0 ? Math.min(100, (current / goal.targetAmount) * 100) : 0;
 
-        const now = new Date();
-        const start = new Date(goal.startDate);
-        const end = new Date(goal.endDate);
-        const msPerDay = 86400000;
-        const daysTotal = Math.max(1, Math.round((end.getTime() - start.getTime()) / msPerDay) + 1);
-        const daysElapsed = Math.max(0, Math.min(daysTotal, Math.round((now.getTime() - start.getTime()) / msPerDay) + 1));
-        const daysLeft = Math.max(0, daysTotal - daysElapsed);
+        const { daysTotal, daysElapsed, daysLeft } = goalDayCounts(goal);
 
         return { current, percent, daysElapsed, daysTotal, daysLeft };
       },

@@ -24,3 +24,6 @@ tmp/
 
 # Backup copy
 secretary-main/
+
+.vercel
+.env*

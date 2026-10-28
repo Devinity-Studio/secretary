@@ -106,3 +106,46 @@ export function createContextFromNote(
 export function shortContextRef(id: string): string {
   return `ctx_${id.replace(/-/g, "").slice(0, 6)}`;
 }
+
+/**
+ * สร้าง Context จากรูปใบเสร็จ/เอกสาร (ถ่ายด้วยกล้องหรือเลือกไฟล์)
+ *
+ * - รูปเป็นหลักฐานดิบ — เก็บ dataURL ใน content.data.imageDataUrl (kind: hybrid)
+ * - text ของ evidence เป็นคำอธิบายสั้น ๆ ที่ค้นหาได้
+ * - lifecycle = "tentative" — ยังไม่ตีความ/ไม่ทำบัญชีใด ๆ
+ *
+ * @returns Context ที่สร้าง (ไม่เป็น null เพราะ dataURL ตรวจแล้วจาก caller)
+ */
+export function createContextFromReceipt(
+  dataUrl: string,
+  origin: "camera" | "file",
+  capturedAt?: string,
+): SecretaryContext {
+  const meta = {
+    imageDataUrl: dataUrl,
+    captureOrigin: origin,
+  };
+  const evidence: Omit<Evidence, "id"> = {
+    sourceType: "user",
+    sourceId: null,
+    content: {
+      kind: "hybrid",
+      text: "รูปใบเสร็จ/เอกสาร",
+      data: meta,
+    },
+    capturedAt: capturedAt ?? new Date().toISOString(),
+    confidence: "high", // รูปจากกล้อง/ไฟล์จริงของผู้ใช้เอง
+  };
+
+  const createInput: CreateContextInput = {
+    evidence,
+    type: CONTEXT_DOMAIN_TYPES.USER_NOTE,
+    source: "user",
+    lifecycle: "tentative",
+    tags: ["context", "receipt"],
+  };
+
+  const context = useContextStore.getState().createContext(createInput);
+  useContextStore.getState().markPatternOnly(context.id);
+  return context;
+}

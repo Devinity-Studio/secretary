@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { AccountStatement } from "@/components/account-statement";
 import { AppShell } from "@/components/app-shell";
 import { CaptureBar } from "@/components/capture-bar";
 import { Modal } from "@/components/modal";
@@ -22,6 +23,7 @@ const FILTERS: Array<{ id: "all" | TransactionType; label: string }> = [
 
 function FinancePage() {
   const transactions = useFinanceStore((s) => s.transactions);
+  const accounts = useFinanceStore((s) => s.accounts);
   const [period, setPeriod] = useState<PeriodKey>("month");
   const [filter, setFilter] = useState<"all" | TransactionType>("all");
   const [formOpen, setFormOpen] = useState(false);
@@ -44,6 +46,28 @@ function FinancePage() {
         />
         <PeriodSwitch value={period} onChange={setPeriod} />
         <SummaryCards income={stats.income} expense={stats.expense} net={stats.net} />
+
+        {/* แยกตามบัญชี — กางดูรายการเดินบัญชีของแต่ละใบได้ */}
+        {accounts.filter((a) => !a.archived).length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-medium text-muted">แยกตามบัญชี</h2>
+            {accounts
+              .filter((a) => !a.archived)
+              .map((a) => (
+                <AccountStatement
+                  key={a.id}
+                  account={a}
+                  transactions={transactions}
+                  period={period}
+                  onEdit={(tx) => {
+                    setEditing(tx);
+                    setFormOpen(true);
+                  }}
+                />
+              ))}
+          </div>
+        )}
+
         <div className="flex gap-1 overflow-x-auto">
           {FILTERS.map((f) => (
             <button

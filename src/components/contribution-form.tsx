@@ -4,27 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGoalStore } from "@/lib/goals/store";
-import type { Goal } from "@/lib/goals/types";
+import type { Contribution, Goal } from "@/lib/goals/types";
 import { todayISO } from "@/lib/utils";
 
 export function ContributionForm({
   goal,
   date,
+  initial,
   onClose,
 }: {
   goal: Goal;
   date?: string;
+  initial?: Contribution | null;
   onClose: () => void;
 }) {
   const addContribution = useGoalStore((s) => s.addContribution);
+  const updateContribution = useGoalStore((s) => s.updateContribution);
   const contributions = useGoalStore((s) => s.contributions);
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [selectedDate, setSelectedDate] = useState(date ?? todayISO());
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [selectedDate, setSelectedDate] = useState(initial?.date ?? date ?? todayISO());
 
-  // Check if there's already a contribution for this date
+  // Check if there's already a contribution for this date (excluding the one being edited)
   const existing = contributions.find(
-    (c) => c.goalId === goal.id && c.date === selectedDate,
+    (c) => c.goalId === goal.id && c.date === selectedDate && c.id !== initial?.id,
   );
 
   function submit(e: React.FormEvent) {
@@ -34,13 +37,22 @@ export function ContributionForm({
       toast.error("กรอกจำนวนให้ถูกต้อง");
       return;
     }
-    addContribution({
-      goalId: goal.id,
-      amount: n,
-      date: selectedDate,
-      note: note.trim() || null,
-    });
-    toast.success(`บันทึก ${goal.unit} แล้ว`);
+    if (initial) {
+      updateContribution(initial.id, {
+        amount: n,
+        date: selectedDate,
+        note: note.trim() || null,
+      });
+      toast.success("แก้ไขรายการแล้ว");
+    } else {
+      addContribution({
+        goalId: goal.id,
+        amount: n,
+        date: selectedDate,
+        note: note.trim() || null,
+      });
+      toast.success(`บันทึก ${goal.unit} แล้ว`);
+    }
     onClose();
   }
 
@@ -49,7 +61,11 @@ export function ContributionForm({
       <div className="rounded-xl bg-surface-2 p-3">
         <p className="text-sm font-medium">{goal.title}</p>
         <p className="text-xs text-muted">
-          {existing ? `วันนี้บันทึกแล้ว ${existing.amount} ${goal.unit}` : "ยังไม่มีรายการวันนี้"}
+          {initial
+            ? `กำลังแก้ไขรายการเดิม ${initial.amount} ${goal.unit}`
+            : existing
+              ? `วันนี้บันทึกแล้ว ${existing.amount} ${goal.unit}`
+              : "ยังไม่มีรายการวันนี้"}
         </p>
       </div>
 
@@ -92,7 +108,7 @@ export function ContributionForm({
         <Button type="button" variant="secondary" onClick={onClose}>
           ยกเลิก
         </Button>
-        <Button type="submit">บันทึก</Button>
+        <Button type="submit">{initial ? "บันทึกการแก้ไข" : "บันทึก"}</Button>
       </div>
     </form>
   );

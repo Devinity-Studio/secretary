@@ -1,17 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DayDetail } from "@/components/calendar/day-detail";
 import { EventForm } from "@/components/calendar/event-form";
 import { MonthGrid } from "@/components/calendar/month-grid";
+import { MonthHistory } from "@/components/calendar/month-history";
 import { ContributionForm } from "@/components/contribution-form";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/modal";
 import { useGoalStore } from "@/lib/goals/store";
-import { useCalendarStore } from "@/lib/calendar/store";
 import type { CalendarEvent } from "@/lib/calendar/types";
-import type { Goal } from "@/lib/goals/types";
 import { todayISO } from "@/lib/utils";
 
 export const Route = createFileRoute("/calendar")({ component: CalendarPage });
@@ -63,6 +62,8 @@ function CalendarPage() {
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
+
+        <MonthHistory year={year} month={month} onSelectDate={setSelectedDate} />
 
         {selectedDate && (
           <DayDetail

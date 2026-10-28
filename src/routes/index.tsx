@@ -4,13 +4,14 @@ import { AppShell } from "@/components/app-shell";
 import { CaptureBar } from "@/components/capture-bar";
 import { ContextInput } from "@/components/context-input";
 import { ContextFeed } from "@/components/context-feed";
+import { VoiceHome } from "@/components/voice-home";
 import { Modal } from "@/components/modal";
 import { PeriodSwitch } from "@/components/period-switch";
 import { SummaryCards } from "@/components/summary-cards";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
-import { QuotaCard } from "@/components/quota-card";
 import { summarize, useFinanceStore } from "@/lib/finance/store";
+import { useContextStore } from "@/lib/context/store";
 import type { PeriodKey, Transaction } from "@/lib/finance/types";
 import { formatBaht } from "@/lib/utils";
 
@@ -19,6 +20,8 @@ export const Route = createFileRoute("/")({ component: Home });
 function Home() {
   const transactions = useFinanceStore((s) => s.transactions);
   const accounts = useFinanceStore((s) => s.accounts);
+  const contextsRecord = useContextStore((s) => s.contexts);
+  const evidence = useContextStore((s) => s.evidence);
   const [period, setPeriod] = useState<PeriodKey>("day");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -30,7 +33,13 @@ function Home() {
 
   return (
     <AppShell>
-      <div className="space-y-5">
+      {/* ══ Mobile: voice-first home ตาม Guide + สรีระมือ ══ */}
+      <div className="md:hidden">
+        <VoiceHome contextsRecord={contextsRecord} evidenceById={evidence} />
+      </div>
+
+      {/* ══ Desktop: แดชบอร์ดแบบเดิม (ปรับลด QuotaCard ออก — มีหน้า /quota แล้ว) ══ */}
+      <div className="hidden space-y-5 md:block">
         <div>
           <h1 className="font-display text-3xl font-medium tracking-tight">วันนี้</h1>
           <p className="mt-1 text-sm text-muted">
@@ -38,10 +47,7 @@ function Home() {
             {debt > 0 ? ` · หนี้บัตร ${formatBaht(debt)}` : ""}
           </p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <CaptureBar onNeedForm={() => { setEditing(null); setFormOpen(true); }} />
-          <QuotaCard />
-        </div>
+        <CaptureBar onNeedForm={() => { setEditing(null); setFormOpen(true); }} />
         <ContextInput />
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-muted">บริบทล่าสุด</h2>
@@ -60,6 +66,7 @@ function Home() {
           />
         </div>
       </div>
+
       <Modal
         title={editing ? "แก้ไขรายการ" : "เพิ่มรายการ"}
         open={formOpen}

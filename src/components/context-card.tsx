@@ -10,6 +10,15 @@ type ContextCardProps = {
   className?: string;
 };
 
+/** ดึง dataURL รูปจาก evidence (ถ้ามี — จากกล้อง/ไฟล์แนบ) */
+export function evidenceImageData(evidence: Evidence): string | null {
+  if (evidence.content.kind !== "hybrid" && evidence.content.kind !== "structured") {
+    return null;
+  }
+  const v = evidence.content.data?.imageDataUrl;
+  return typeof v === "string" && v.startsWith("data:image/") ? v : null;
+}
+
 const sectionClass = "border-t border-border pt-3";
 
 export function ContextCard({
@@ -21,7 +30,7 @@ export function ContextCard({
   const model = buildContextCardModel(context, evidenceById);
 
   return (
-    <article className={cn("rounded-lg border border-border bg-surface p-4 shadow-sm", className)}>
+    <article className={cn("rounded-lg border border-border bg-surface p-4 shadow-sm animate-fade-in-up hover:scale-105 transition-transform duration-300", className)}>
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-xs font-medium uppercase tracking-[0.08em] text-muted">
@@ -57,15 +66,30 @@ export function ContextCard({
             Evidence <span className="text-xs text-muted">{model.evidence.length}</span>
           </summary>
           <div className="mt-3 space-y-2">
-            {model.evidence.map((item) => (
-              <div key={item.id} className="rounded-md bg-surface-2 p-3 text-sm">
-                <div className="flex justify-between gap-3 text-xs text-muted">
-                  <span>{item.source}</span>
-                  <span>{item.confidence}</span>
+            {model.evidence.map((item) => {
+              const image = evidenceById[item.id]
+                ? evidenceImageData(evidenceById[item.id])
+                : null;
+              return (
+                <div key={item.id} className="rounded-md bg-surface-2 p-3 text-sm">
+                  <div className="flex justify-between gap-3 text-xs text-muted">
+                    <span>{item.source}</span>
+                    <span>{item.confidence}</span>
+                  </div>
+                  {image ? (
+                    <img
+                      src={image}
+                      alt="หลักฐานรูปภาพ"
+                      className="mt-2 max-h-56 w-full rounded-md object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
+                  {item.preview && item.preview !== "รูปใบเสร็จ/เอกสาร" ? (
+                    <p className="mt-1 leading-5">{item.preview}</p>
+                  ) : null}
                 </div>
-                <p className="mt-1 leading-5">{item.preview}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </details>
 

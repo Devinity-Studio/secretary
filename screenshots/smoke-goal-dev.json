@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8080/goals",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "คุณเลขา",
+      "hasCanvas": false,
+      "bodyTextLen": 187,
+      "bodyTextHash": "7d8cdf50b4084ec0539a1e0373330205a70214c0af312a439c729e96aa58dcdd",
+      "bodyTextPrefix": "วันนี้ บริบท การเงิน เป้าหมาย ปฏิทิน บัญชี AI Quota เป้าหมาย ตั้",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "Y:\\DevProject\\secretary-main\\screenshots\\smoke-goal-dev.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "คุณเลขา",
+      "hasCanvas": false,
+      "bodyTextLen": 187,
+      "bodyTextHash": "8c26b56a7d1c976892c65025bcc6866d78764f70a7f3ae174e7b83b518197069",
+      "bodyTextPrefix": "เป้าหมาย ตั้งเป้าหมายและติดตามความคืบหน้า ใหม่ 🎯 ยังไม่มีเป้าหม",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "Y:\\DevProject\\secretary-main\\screenshots\\smoke-goal-dev-mobile.png"
+    }
+  },
+  "brandWarnings": [
+    "BRAND NOTE: no custom public/og.jpg — the platform will serve the og.grok.me placeholder. Custom cards are the default for games of every kind (DOM board/word games included), whimsical apps, creative tools, and brand-forward pages — only plain utilities (converters, CRUD trackers, admin dashboards) keep the placeholder. If this app is not a plain utility, finish the brand-asset pass per \\workspace\\.grok\\skills\\og\\SKILL.md."
+  ],
+  "authWarnings": [],
+  "verdictFile": "Y:\\DevProject\\secretary-main\\screenshots\\smoke-goal-dev.json"
+}

@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8080/context-card-demo",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "คุณเลขา",
+      "hasCanvas": false,
+      "bodyTextLen": 245,
+      "bodyTextHash": "6669c9ffade2305b36fe7f55481270c255b34cb5b8efe7749d72dfaa1217c532",
+      "bodyTextPrefix": "วันนี้ บริบท การเงิน เป้าหมาย ปฏิทิน บัญชี AI Quota Context Card",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "Y:\\DevProject\\secretary-main\\screenshots\\proto-smoke.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "คุณเลขา",
+      "hasCanvas": false,
+      "bodyTextLen": 245,
+      "bodyTextHash": "0399817652e3c084f145b88d1f369472129059e9250286bfea1f6e737d4a3c13",
+      "bodyTextPrefix": "Context Card Prototype ตาม UX Guide — จับ → การ์ด → ปัดแก้ → บริ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "Y:\\DevProject\\secretary-main\\screenshots\\proto-smoke-mobile.png"
+    }
+  },
+  "brandWarnings": [
+    "BRAND NOTE: no custom public/og.jpg — the platform will serve the og.grok.me placeholder. Custom cards are the default for games of every kind (DOM board/word games included), whimsical apps, creative tools, and brand-forward pages — only plain utilities (converters, CRUD trackers, admin dashboards) keep the placeholder. If this app is not a plain utility, finish the brand-asset pass per \\workspace\\.grok\\skills\\og\\SKILL.md."
+  ],
+  "authWarnings": [],
+  "verdictFile": "Y:\\DevProject\\secretary-main\\screenshots\\proto-smoke.json"
+}
